@@ -10,6 +10,15 @@ USAGE = f"Usage: {__file__} path/to/avbs [--head 8:00] [--tail 3:23]"
 SLATE_HEAD_DURATION = Timecode("8:00")
 SLATE_TAIL_DURATION = Timecode("3:23")
 
+HEADERS = {
+	"Reel Name"     : 0,
+	"Reel TRT"      : 11,
+	"LFOA"          : 7,
+	"Date Modified" : 19,
+	"Bin Locked"    : 10
+}
+COLUMN_SPACING = "     "
+
 def list_latest_trt_from_bins(bins_path:str):
 	"""Example"""
 
@@ -19,8 +28,6 @@ def list_latest_trt_from_bins(bins_path:str):
 
 	if not bin_paths:
 		raise FileNotFoundError(f"No bins found at {bins_path}")
-	
-	padding = 0
 
 	for bin_path in bin_paths:
 		#print(bin_path)
@@ -37,22 +44,26 @@ def list_latest_trt_from_bins(bins_path:str):
 			lock = lock
 		))
 		
-		padding = max(padding, len(info.sequence_name))
+		HEADERS["Reel Name"] = max(HEADERS.get("Reel Name",0), len(info.sequence_name))
 	
 	if not len(parsed_info):
 		raise Exception(f"No sequences were found in any bins.")
 
+	# This is terrible code but you get the idea
 	print("")
-	print(f"{'Reel Name'.ljust(padding)}	Reel TRT   	LFOA   	Date Modified      	Locked")
-	print(f"{'=' * padding}\t{'='*len('Reel TRT  	')}\t{'='*7}\t{'='*19}\t{'='*12}")
+
+	print(COLUMN_SPACING.join(colname.ljust(pad) for colname, pad in HEADERS.items()))
+	print(COLUMN_SPACING.join('=' * pad for _, pad in HEADERS.items()))
+
+	padding = list(HEADERS.values())
 
 	for info in sorted(parsed_info, key=lambda x: trtlib.human_sort(x.reel.sequence_name)):
-		print('\t'.join(str(x) for x in [
-			info.reel.sequence_name.ljust(padding),
-			info.reel.duration_adjusted,
-			info.reel.lfoa.rjust(7),
-			info.reel.date_modified,
-			info.lock if info.lock else '-',
+		print(COLUMN_SPACING.join(x for x in [
+			info.reel.sequence_name.ljust(padding[0]),
+			str(info.reel.duration_adjusted).rjust(padding[1]),
+			info.reel.lfoa.rjust(padding[2]),
+			str(info.reel.date_modified).rjust(padding[3]),
+			info.lock.ljust(padding[4]) if info.lock else '-',
 		]))
 	
 	print("")
