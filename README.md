@@ -11,4 +11,4 @@ Usage for the example command-line program:
 python3 examples/get_trts.py /path/to/binsfolder/ [--head 8:00] [--tail 4:00]
 ```
 
-![get_trts.py example](docs/get_trts.py)
+![get_trts.py example](docs/get_trts.png)
