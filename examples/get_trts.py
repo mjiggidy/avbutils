@@ -1,15 +1,18 @@
 import trtlib
-import sys, pathlib
+import sys, pathlib, concurrent.futures
 from collections import namedtuple
 from timecode import Timecode
 
-BinInfo = namedtuple("BinInfo","reel path lock")
-
 USAGE = f"Usage: {__file__} path/to/avbs [--head 8:00] [--tail 3:23]"
 
+# Start Config
+
+# Durations of head/tail slates, will be factored out of TRT per reel
 SLATE_HEAD_DURATION = Timecode("8:00")
 SLATE_TAIL_DURATION = Timecode("3:23")
 
+# Results list setup
+COLUMN_SPACING = "     "
 HEADERS = {
 	"Reel Name"     : 0,
 	"Reel TRT"      : 11,
@@ -17,38 +20,53 @@ HEADERS = {
 	"Date Modified" : 19,
 	"Bin Locked"    : 10
 }
-COLUMN_SPACING = "     "
 
-def list_latest_trt_from_bins(bins_path:str):
-	"""Example"""
+# End Config
+
+BinInfo = namedtuple("BinInfo","reel path lock")
+
+def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
+	"""Get stats for a list of bins"""
 
 	parsed_info = []
-
-	bin_paths = [p for p in pathlib.Path(bins_path).glob("*.avb") if not p.stem.startswith('.')]
-
-	if not bin_paths:
-		raise FileNotFoundError(f"No bins found at {bins_path}")
-
-	for bin_path in bin_paths:
-		#print(bin_path)
-		try:
-			info = trtlib.get_reelinfo_from_path(bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION)
-		except Exception as e:
-			print(f"Skipping {bin_path.name}: {e}")
-			continue
-
-		lock = trtlib.get_lockfile_for_bin(bin_path)
-		parsed_info.append(BinInfo(
-			reel = info,
-			path = bin_path,
-			lock = lock
-		))
-		
-		HEADERS["Reel Name"] = max(HEADERS.get("Reel Name",0), len(info.sequence_name))
 	
-	if not len(parsed_info):
-		raise Exception(f"No sequences were found in any bins.")
+	# Parse Bins Concurrently
+	with concurrent.futures.ProcessPoolExecutor() as ex:
 
+		# Create a dict associating a subprocess with the path of the bin it's working on
+		future_info = {
+			ex.submit(trtlib.get_reelinfo_from_path, bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION): bin_path for bin_path in bin_paths
+		}
+
+		# Process each result as it becomes available
+		for future_result in concurrent.futures.as_completed(future_info):
+			bin_path = future_info[future_result]
+
+			try:
+				info = future_result.result()
+			except Exception as e:
+				print(f"Skipping {bin_path.name}: {e}")
+				continue
+
+			lock = trtlib.get_lockfile_for_bin(bin_path)
+
+			# Combine all the info
+			parsed_info.append(BinInfo(
+				reel = info,
+				path = bin_path,
+				lock = lock
+			))
+			
+			# While we're here: Figure out the padding for the Reel Name column
+			HEADERS["Reel Name"] = max(HEADERS.get("Reel Name",0), len(info.sequence_name))
+	
+	return parsed_info
+	
+
+def print_trts(parsed_info:list[BinInfo]):
+	"""Print the results"""
+
+	# List the results
 	# This is terrible code but you get the idea
 	print("")
 
@@ -70,28 +88,42 @@ def list_latest_trt_from_bins(bins_path:str):
 	print(f"* Total TRT: {sum(info.reel.duration_adjusted for info in parsed_info)}")
 	print("")
 
+def process_args():
+	"""Look for --head/--tail options"""
+
+	# Head leader duration was specified
+	if "--head" in sys.argv:
+		SLATE_HEAD_DURATION = Timecode(sys.argv[sys.argv.index("--head")+1])		
+		print(f"Using custom head: {SLATE_HEAD_DURATION}")
+
+	# Tail leader duration was specified
+	if "--tail" in sys.argv:
+		SLATE_TAIL_DURATION = Timecode(sys.argv[sys.argv.index("--tail")+1])
+		print(f"Using custom tail: {SLATE_TAIL_DURATION}")
+
 def main():
 
 	if not len(sys.argv):
 		sys.exit(USAGE)
 
-	if "--head" in sys.argv:
-		try:
-			SLATE_HEAD_DURATION = Timecode(sys.argv[sys.argv.index("--head")+1])
-		except Exception as e:
-			sys.exit(USAGE)
-		
-		print(f"Using custom head: {SLATE_HEAD_DURATION}")
+	# Process command line arguments
+	try:
+		process_args()
+	except:
+		sys.exit(USAGE)
 
-	if "--tail" in sys.argv:
-		try:
-			SLATE_TAIL_DURATION = Timecode(sys.argv[sys.argv.index("--tail")+1])
-		except Exception as e:
-			sys.exit(USAGE)
-		
-		print(f"Using custom tail: {SLATE_TAIL_DURATION}")
+	# Get bin paths (.avb) from the folder provided
+	bin_paths = [p for p in pathlib.Path(sys.argv[1]).glob("*.avb") if not p.stem.startswith('.')]
+	if not bin_paths:
+		sys.exit(f"No bins found at {sys.argv[1]}")
 
-	list_latest_trt_from_bins(sys.argv[1])
+	# Get the relevant info from each bin
+	parsed_info = get_latest_stats_from_bins(bin_paths)
+	if not len(parsed_info):
+		sys.exit(f"No sequences were found in any bins.")
+
+	# Print the results
+	print_trts(parsed_info)
 
 if __name__ == "__main__":
 
