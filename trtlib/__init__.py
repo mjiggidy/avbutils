@@ -6,6 +6,9 @@ from timecode import Timecode
 DEFAULT_HEAD_DURATION = Timecode("8:00")
 DEFAULT_TAIL_DURATION = Timecode("3:23")
 
+REEL_NUMBER_BIN_COLUMN_NAME = "Reel #"
+"""The name of the Avid bin column from which to extract the Reel Number"""
+
 def _atoi(text:str) -> int|str:
 	"""Cast any numeric values to integers for `human_sort`"""
 	return int(text) if text.isdigit() else text
@@ -14,17 +17,31 @@ def human_sort(text) -> list[str,int]:
 	"""Mimics Avid's human-readable text sorting (ie 9 comes before 10)"""
 	return [_atoi(c) for c in re.split(r'(\d+)', text)]
 
-def get_sequence_info(
+def get_reel_number_from_sequence_attributes(attrs:avb.components.core.AVBPropertyData) -> str|None:
+	"""Extract the 'Reel #' bin column data from a sequence's attributes.  Returns None if not set."""
+
+	# Raise an exception if we weren't given property data.  Otherweise we'll treat failures as "that data just wasn't set"
+	if not isinstance(attrs, avb.components.core.AVBPropertyData):
+		raise ValueError(f"Expected AVBPropertyData, but got {type(attrs)} instead.")
+
+	try:
+		return attrs.get("_USER").get(REEL_NUMBER_BIN_COLUMN_NAME)
+	except:
+		return None
+
+def get_reel_info(
 	sequence:avb.trackgroups.Composition,
 	head_duration:Timecode=DEFAULT_HEAD_DURATION,
 	tail_duration:Timecode=DEFAULT_TAIL_DURATION) -> ReelInfo:
 	"""Get the properties of a given sequence"""
 
 	#print(sequence.length, sequence.edit_rate)
+	#print(list(sequence.attributes.get("_USER").items()))
 	
 	return ReelInfo(
 		sequence_name=sequence.name,
 		date_modified=sequence.creation_time,
+		reel_number=get_reel_number_from_sequence_attributes(sequence.attributes),
 		duration_total=Timecode(sequence.length, rate=round(sequence.edit_rate)),
 		duration_head_leader=head_duration,
 		duration_tail_leader=tail_duration
@@ -34,7 +51,7 @@ def get_sequences_from_bin(bin:avb.bin.Bin) -> collections.abc.Generator[avb.tra
 	"""Get all top-level sequences in a given Avid bin"""
 	return (mob for mob in bin.toplevel() if isinstance(mob, avb.trackgroups.Composition))
 
-def get_reelinfo_from_path(
+def get_reel_info_from_path(
 	bin_path:pathlib.Path,
 	head_duration:Timecode=DEFAULT_HEAD_DURATION,
 	tail_duration:Timecode=DEFAULT_TAIL_DURATION) -> ReelInfo:
@@ -58,7 +75,7 @@ def get_reelinfo_from_path(
 		
 		# Get info from latest reel
 		try:
-			sequence_info = get_sequence_info(latest_sequence, head_duration=head_duration, tail_duration=tail_duration)
+			sequence_info = get_reel_info(latest_sequence, head_duration=head_duration, tail_duration=tail_duration)
 		except Exception as e:
 			raise Exception(f"Error parsing sequence: {e}")
 	

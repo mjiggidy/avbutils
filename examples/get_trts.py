@@ -35,7 +35,7 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 
 		# Create a dict associating a subprocess with the path of the bin it's working on
 		future_info = {
-			ex.submit(trtlib.get_reelinfo_from_path, bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION): bin_path for bin_path in bin_paths
+			ex.submit(trtlib.get_reel_info_from_path, bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION): bin_path for bin_path in bin_paths
 		}
 
 		# Process each result as it becomes available
@@ -73,15 +73,13 @@ def print_trts(parsed_info:list[BinInfo]):
 	print(COLUMN_SPACING.join(colname.ljust(pad) for colname, pad in HEADERS.items()))
 	print(COLUMN_SPACING.join('=' * pad for _, pad in HEADERS.items()))
 
-	padding = list(HEADERS.values())
-
 	for info in sorted(parsed_info, key=lambda x: trtlib.human_sort(x.reel.sequence_name)):
 		print(COLUMN_SPACING.join(x for x in [
-			info.reel.sequence_name.ljust(padding[0]),
-			str(info.reel.duration_adjusted).rjust(padding[1]),
-			info.reel.lfoa.rjust(padding[2]),
-			str(info.reel.date_modified).rjust(padding[3]),
-			info.lock.ljust(padding[4]) if info.lock else '-',
+			info.reel.sequence_name.ljust(HEADERS.get("Reel Name")),
+			str(info.reel.duration_adjusted).rjust(HEADERS.get("Reel TRT")),
+			info.reel.lfoa.rjust(HEADERS.get("LFOA")),
+			str(info.reel.date_modified).rjust(HEADERS.get("Date Modified")),
+			info.lock.ljust(HEADERS.get("Bin Locked")) if info.lock else '-',
 		]))
 	
 	print("")
