@@ -1,33 +1,28 @@
 import dataclasses, datetime
+import avb
 from timecode import Timecode
 
 @dataclasses.dataclass(frozen=True)
 class ReelInfo:
 	"""Representation of a Sequence from an Avid bin"""
 
-#	file_path:pathlib.Path
-#	"""The file path of the originating bin"""
-
-	sequence_name:str
+	sequence_name:str = str()
 	"""The name of the sequence"""
 
-	reel_number:int
-	"""The number of the reel in the feature"""
-
-	date_modified:datetime.datetime
-	"""The date the sequence was last modified in the bin"""
-
-	duration_total:Timecode
+	duration_total:Timecode = Timecode(0)
 	"""The total duration of the sequence"""
 
-	duration_head_leader:Timecode
+	date_modified:datetime.datetime = datetime.datetime.now()
+	"""The date the sequence was last modified in the bin"""
+
+	reel_number:int|None = None
+	"""The number of the reel in the feature"""
+
+	duration_head_leader:Timecode|None = None
 	"""The duration of the head leader"""
 
-	duration_tail_leader:Timecode
+	duration_tail_leader:Timecode|None = None
 	"""The duration of the tail leader"""
-
-#	locked:str
-#	"""If the bin was locked at the time of reading"""
 
 	@property
 	def duration_adjusted(self) -> Timecode:
