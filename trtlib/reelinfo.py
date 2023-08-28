@@ -27,7 +27,7 @@ class ReelInfo:
 	@property
 	def duration_adjusted(self) -> Timecode:
 		"""Duration of active picture, without head or tail leaders"""
-		return self.duration_total - self.duration_head_leader - self.duration_tail_leader
+		return self.duration_total - (self.duration_head_leader or 0) - (self.duration_tail_leader or 0)
 	
 	@property
 	def lfoa(self) -> str:
