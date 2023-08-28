@@ -29,7 +29,7 @@ def get_reel_number_from_sequence_attributes(attrs:avb.components.core.AVBProper
 	except:
 		return None
 
-def get_sequence_info(
+def get_reel_info(
 	sequence:avb.trackgroups.Composition,
 	head_duration:Timecode=DEFAULT_HEAD_DURATION,
 	tail_duration:Timecode=DEFAULT_TAIL_DURATION) -> ReelInfo:
@@ -51,7 +51,7 @@ def get_sequences_from_bin(bin:avb.bin.Bin) -> collections.abc.Generator[avb.tra
 	"""Get all top-level sequences in a given Avid bin"""
 	return (mob for mob in bin.toplevel() if isinstance(mob, avb.trackgroups.Composition))
 
-def get_reelinfo_from_path(
+def get_reel_info_from_path(
 	bin_path:pathlib.Path,
 	head_duration:Timecode=DEFAULT_HEAD_DURATION,
 	tail_duration:Timecode=DEFAULT_TAIL_DURATION) -> ReelInfo:
@@ -75,7 +75,7 @@ def get_reelinfo_from_path(
 		
 		# Get info from latest reel
 		try:
-			sequence_info = get_sequence_info(latest_sequence, head_duration=head_duration, tail_duration=tail_duration)
+			sequence_info = get_reel_info(latest_sequence, head_duration=head_duration, tail_duration=tail_duration)
 		except Exception as e:
 			raise Exception(f"Error parsing sequence: {e}")
 	
