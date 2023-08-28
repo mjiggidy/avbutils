@@ -11,6 +11,9 @@ class ReelInfo:
 	sequence_name:str
 	"""The name of the sequence"""
 
+	reel_number:int
+	"""The number of the reel in the feature"""
+
 	date_modified:datetime.datetime
 	"""The date the sequence was last modified in the bin"""
 
