@@ -35,7 +35,7 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 
 		# Create a dict associating a subprocess with the path of the bin it's working on
 		future_info = {
-			ex.submit(trtlib.get_reelinfo_from_path, bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION): bin_path for bin_path in bin_paths
+			ex.submit(trtlib.get_reel_info_from_path, bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION): bin_path for bin_path in bin_paths
 		}
 
 		# Process each result as it becomes available
