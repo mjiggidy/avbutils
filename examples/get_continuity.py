@@ -75,7 +75,7 @@ def is_masterclip(component:avb.components.Component) -> bool:
 	return isinstance(component, avb.trackgroups.Composition) and component.mob_type == "MasterMob"
 
 
-def print_masterclip_info(masterclip:avb.trackgroups.Composition, duration:TimecodeRange):
+def print_masterclip_info(masterclip:avb.trackgroups.Composition, duration:TimecodeRange, kind:str):
 	"""Display info (temp?)"""
 
 	scene_number = masterclip.attributes.get("_USER").get("Scene")
@@ -84,7 +84,7 @@ def print_masterclip_info(masterclip:avb.trackgroups.Composition, duration:Timec
 	clip_name    = masterclip.name
 	
 	#sys.exit(daily_video_track_component_mob.name)
-	print(f"SRCCLP:\t{duration.start}\tName: {str(clip_name).ljust(24)} Sc: {str(scene_number).ljust(16)} Tk: {str(take_number).ljust(8)} Tape: {str(tape_name).ljust(24)} Dur: {duration.duration}")
+	print(f"{kind}:\t{duration.start}\tName: {str(clip_name).ljust(24)} Sc: {str(scene_number).ljust(16)} Tk: {str(take_number).ljust(8)} Tape: {str(tape_name).ljust(24)} Dur: {duration.duration}")
 
 
 
@@ -104,6 +104,7 @@ def do_bin_good_and_nice(bin_path:str):
 		for component in track_v1.components:
 
 			# Get the length of the most-parent-y component as it lives in the timeline
+			og_class  = component.class_id.decode()
 			og_rate   = component.edit_rate
 			og_length = component.length
 
@@ -159,7 +160,7 @@ def do_bin_good_and_nice(bin_path:str):
 				tc_current += og_length
 				continue
 			
-			print_masterclip_info(component, duration=tc_subclip)
+			print_masterclip_info(component, duration=tc_subclip, kind=og_class)
 			tc_current += tc_subclip.duration
 
 			
