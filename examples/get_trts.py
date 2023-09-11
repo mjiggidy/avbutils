@@ -3,13 +3,10 @@ import sys, pathlib, concurrent.futures
 from collections import namedtuple
 from timecode import Timecode
 
-USAGE = f"Usage: {__file__} path/to/avbs [--head 8:00] [--tail 3:23]"
-
 # Start Config
-
 # Durations of head/tail slates, will be factored out of TRT per reel
 SLATE_HEAD_DURATION = Timecode("8:00")
-SLATE_TAIL_DURATION = Timecode("3:23")
+SLATE_TAIL_DURATION = Timecode("4:00")
 
 # Results list setup
 COLUMN_SPACING = "     "
@@ -22,6 +19,8 @@ HEADERS = {
 }
 
 # End Config
+
+USAGE = f"Usage: {__file__} path/to/avbs [--head {SLATE_HEAD_DURATION}] [--tail {SLATE_TAIL_DURATION}]"
 
 BinInfo = namedtuple("BinInfo","reel path lock")
 

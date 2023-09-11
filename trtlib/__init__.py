@@ -4,7 +4,7 @@ from .reelinfo import ReelInfo
 from timecode import Timecode
 
 DEFAULT_HEAD_DURATION = Timecode("8:00")
-DEFAULT_TAIL_DURATION = Timecode("3:23")
+DEFAULT_TAIL_DURATION = Timecode("4:00")
 
 REEL_NUMBER_BIN_COLUMN_NAME = "Reel #"
 """The name of the Avid bin column from which to extract the Reel Number"""
