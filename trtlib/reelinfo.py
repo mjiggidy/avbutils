@@ -27,10 +27,10 @@ class ReelInfo:
 	@property
 	def duration_adjusted(self) -> Timecode:
 		"""Duration of active picture, without head or tail leaders"""
-		return self.duration_total - (self.duration_head_leader or 0) - (self.duration_tail_leader or 0)
+		return max(self.duration_total - (self.duration_head_leader or 0) - (self.duration_tail_leader or 0), 0)
 	
 	@property
 	def lfoa(self) -> str:
 		"""Last frame of action at 35mm 4-perf"""
-		frame_number = (self.duration_total - self.duration_tail_leader).frame_number - 1
+		frame_number = max((self.duration_total - self.duration_tail_leader).frame_number - 1, 0)
 		return f"{frame_number//16}+{(frame_number%16):02}"
