@@ -1,20 +1,20 @@
-import collections.abc, re, pathlib
+import collections.abc, re, pathlib, enum
 import avb
 from .reelinfo import ReelInfo
 from timecode import Timecode
 
 DEFAULT_HEAD_DURATION = Timecode("8:00")
-DEFAULT_TAIL_DURATION = Timecode("3:23")
+DEFAULT_TAIL_DURATION = Timecode("4:00")
 
 REEL_NUMBER_BIN_COLUMN_NAME = "Reel #"
 """The name of the Avid bin column from which to extract the Reel Number"""
 
-def _atoi(text:str) -> int|str:
-	"""Cast any numeric values to integers for `human_sort`"""
-	return int(text) if text.isdigit() else text
-
 def human_sort(text) -> list[str,int]:
 	"""Mimics Avid's human-readable text sorting (ie 9 comes before 10)"""
+	
+	# Cast any numeric values to integers for `human_sort`
+	_atoi = lambda text: int(text) if text.isdigit() else text
+
 	return [_atoi(c) for c in re.split(r'(\d+)', text)]
 
 def get_reel_number_from_sequence_attributes(attrs:avb.components.core.AVBPropertyData) -> str|None:
@@ -29,6 +29,34 @@ def get_reel_number_from_sequence_attributes(attrs:avb.components.core.AVBProper
 	except:
 		return None
 
+class BinSorting(enum.IntEnum):
+	"""Options for sorting toplevel bin items"""
+
+	DATE_CREATED = enum.auto()
+	"""Sort bin items by creation date"""
+	
+	DATE_MODIFIED = enum.auto()
+	"""Sort bin items by date modified"""
+
+	NAME = enum.auto()
+	"""Sort bin items by the Name column"""
+
+	# NOTE: Maybe do this whole thing differently?
+	# But be to be sensitive to pickling for multiprocessing
+
+	@classmethod
+	def get_sort_lambda(cls, method:"BinSorting"):
+		"""Retrieve the actual sort lambda"""
+		
+		if method == cls.DATE_CREATED:
+			return lambda x: x.creation_time
+		elif method == cls.DATE_MODIFIED:
+			return lambda x: x.last_modified
+		elif method == cls.NAME:
+			return lambda x: x.name
+		else:
+			return ValueError(f"Invalid sort method: {method}")
+
 def get_reel_info(
 	sequence:avb.trackgroups.Composition,
 	head_duration:Timecode=DEFAULT_HEAD_DURATION,
@@ -40,7 +68,7 @@ def get_reel_info(
 	
 	return ReelInfo(
 		sequence_name=sequence.name,
-		date_modified=sequence.creation_time,
+		date_modified=sequence.last_modified,
 		reel_number=get_reel_number_from_sequence_attributes(sequence.attributes),
 		duration_total=Timecode(sequence.length, rate=round(sequence.edit_rate)),
 		duration_head_leader=head_duration,
@@ -54,7 +82,8 @@ def get_sequences_from_bin(bin:avb.bin.Bin) -> collections.abc.Generator[avb.tra
 def get_reel_info_from_path(
 	bin_path:pathlib.Path,
 	head_duration:Timecode=DEFAULT_HEAD_DURATION,
-	tail_duration:Timecode=DEFAULT_TAIL_DURATION) -> ReelInfo:
+	tail_duration:Timecode=DEFAULT_TAIL_DURATION,
+	sort_by:BinSorting=BinSorting.NAME)-> ReelInfo:
 	"""Given a Avid bin's file path, parse the bin and get the latest sequence info"""
 
 	#print("Using",str(tail_duration))
@@ -69,7 +98,7 @@ def get_reel_info_from_path(
 
 		# Sorting by sequence name with human sorting for version numbers
 		try:
-			latest_sequence = sorted(sequences, key=lambda x:human_sort(x.name), reverse=True)[0]
+			latest_sequence = sorted(sequences, key=BinSorting.get_sort_lambda(sort_by), reverse=True)[0]
 		except IndexError:
 			raise Exception(f"No sequences found in bin")
 		

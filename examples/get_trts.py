@@ -3,13 +3,14 @@ import sys, pathlib, concurrent.futures
 from collections import namedtuple
 from timecode import Timecode
 
-USAGE = f"Usage: {__file__} path/to/avbs [--head 8:00] [--tail 3:23]"
-
-# Start Config
+# START CONFIG
 
 # Durations of head/tail slates, will be factored out of TRT per reel
 SLATE_HEAD_DURATION = Timecode("8:00")
 SLATE_TAIL_DURATION = Timecode("3:23")
+
+# How to sort sequences to find the "most current"
+BIN_SORTING_METHOD = trtlib.BinSorting.DATE_MODIFIED
 
 # Results list setup
 COLUMN_SPACING = "     "
@@ -21,7 +22,9 @@ HEADERS = {
 	"Bin Locked"    : 10
 }
 
-# End Config
+# END CONFIG
+
+USAGE = f"Usage: {__file__} path/to/avbs [--head {SLATE_HEAD_DURATION}] [--tail {SLATE_TAIL_DURATION}]"
 
 BinInfo = namedtuple("BinInfo","reel path lock")
 
@@ -35,7 +38,11 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 
 		# Create a dict associating a subprocess with the path of the bin it's working on
 		future_info = {
-			ex.submit(trtlib.get_reel_info_from_path, bin_path, head_duration=SLATE_HEAD_DURATION, tail_duration=SLATE_TAIL_DURATION): bin_path for bin_path in bin_paths
+			ex.submit(trtlib.get_reel_info_from_path,
+				bin_path=bin_path,
+				head_duration=SLATE_HEAD_DURATION,
+				tail_duration=SLATE_TAIL_DURATION,
+				sort_by = BIN_SORTING_METHOD): bin_path for bin_path in bin_paths
 		}
 
 		# Process each result as it becomes available
@@ -88,16 +95,31 @@ def print_trts(parsed_info:list[BinInfo]):
 
 def process_args():
 	"""Look for --head/--tail options"""
+	# Yeah, yeah... I just don't like `argparse` okay?
+
+	global SLATE_HEAD_DURATION
+	global SLATE_TAIL_DURATION
 
 	# Head leader duration was specified
-	if "--head" in sys.argv:
-		SLATE_HEAD_DURATION = Timecode(sys.argv[sys.argv.index("--head")+1])		
+	while "--head" in sys.argv:
+		head_index = sys.argv.index("--head")
+		
+		SLATE_HEAD_DURATION = Timecode(sys.argv[head_index+1])
 		print(f"Using custom head: {SLATE_HEAD_DURATION}")
+		
+		del sys.argv[head_index+1]
+		del sys.argv[head_index]
+		
 
 	# Tail leader duration was specified
-	if "--tail" in sys.argv:
-		SLATE_TAIL_DURATION = Timecode(sys.argv[sys.argv.index("--tail")+1])
+	while "--tail" in sys.argv:
+		tail_index = sys.argv.index("--tail")
+
+		SLATE_TAIL_DURATION = Timecode(sys.argv[tail_index+1])
 		print(f"Using custom tail: {SLATE_TAIL_DURATION}")
+
+		del sys.argv[tail_index+1]
+		del sys.argv[tail_index]
 
 def main():
 
