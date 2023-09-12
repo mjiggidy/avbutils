@@ -9,12 +9,12 @@ DEFAULT_TAIL_DURATION = Timecode("4:00")
 REEL_NUMBER_BIN_COLUMN_NAME = "Reel #"
 """The name of the Avid bin column from which to extract the Reel Number"""
 
-def _atoi(text:str) -> int|str:
-	"""Cast any numeric values to integers for `human_sort`"""
-	return int(text) if text.isdigit() else text
-
 def human_sort(text) -> list[str,int]:
 	"""Mimics Avid's human-readable text sorting (ie 9 comes before 10)"""
+	
+	# Cast any numeric values to integers for `human_sort`
+	_atoi = lambda text: int(text) if text.isdigit() else text
+
 	return [_atoi(c) for c in re.split(r'(\d+)', text)]
 
 def get_reel_number_from_sequence_attributes(attrs:avb.components.core.AVBPropertyData) -> str|None:
