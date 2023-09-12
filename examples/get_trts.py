@@ -3,10 +3,14 @@ import sys, pathlib, concurrent.futures
 from collections import namedtuple
 from timecode import Timecode
 
-# Start Config
+# START CONFIG
+
 # Durations of head/tail slates, will be factored out of TRT per reel
 SLATE_HEAD_DURATION = Timecode("8:00")
 SLATE_TAIL_DURATION = Timecode("3:23")
+
+# How to sort sequences to find the "most current"
+BIN_SORTING_METHOD = trtlib.BinSorting.DATE_MODIFIED
 
 # Results list setup
 COLUMN_SPACING = "     "
@@ -18,7 +22,7 @@ HEADERS = {
 	"Bin Locked"    : 10
 }
 
-# End Config
+# END CONFIG
 
 USAGE = f"Usage: {__file__} path/to/avbs [--head {SLATE_HEAD_DURATION}] [--tail {SLATE_TAIL_DURATION}]"
 
@@ -38,7 +42,7 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 				bin_path=bin_path,
 				head_duration=SLATE_HEAD_DURATION,
 				tail_duration=SLATE_TAIL_DURATION,
-				sort_by = trtlib.BinSorting.DATE_MODIFIED): bin_path for bin_path in bin_paths
+				sort_by = BIN_SORTING_METHOD): bin_path for bin_path in bin_paths
 		}
 
 		# Process each result as it becomes available
