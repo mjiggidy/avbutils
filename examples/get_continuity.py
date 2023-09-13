@@ -1,6 +1,6 @@
 import sys, pathlib
 import avb
-import trtlib
+import avbutils
 from timecode import Timecode, TimecodeRange
 
 USAGE = f"Usage: {__file__} path/to/bins"
@@ -91,7 +91,7 @@ def print_masterclip_info(masterclip:avb.trackgroups.Composition, duration:Timec
 def do_bin_good_and_nice(bin_path:str):
 
 	with avb.open(bin_path) as bin_handle:
-		latest_sequence:avb.trackgroups.Composition = sorted(trtlib.get_sequences_from_bin(bin_handle.content), key=lambda x: trtlib.human_sort(x.name))[-1]
+		latest_sequence:avb.trackgroups.Composition = sorted(avbutils.get_sequences_from_bin(bin_handle.content), key=lambda x: avbutils.human_sort(x.name))[-1]
 		
 		print(f"{latest_sequence.name} has {len(latest_sequence.tracks)} track(s)")
 
