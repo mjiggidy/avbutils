@@ -1,17 +1,19 @@
-# trt_from_AVBs
+# avbutils
 
-A toolkit to calculate the TRT directly from your Avid project's Reel bins, without requiring any EDL/AAF/XML exports.
+This is a sort of wrapper around the amazing `[pyavb](https://github.com/markreidvfx/pyavb)` library, with tools and utilities for assistant editors such as myself.  `avbutils` allows you to programmatically read Avid bins directly, without the usual need to export EDLs/AAFs/XMLs.
 
-Obviously every project will be set up differently, but `trtlib` contains the tools you can assemble into what you need.
+## Example Programs
 
-## Example Program
+### get_trts.py
 
-An example program can be found at `examples/get_trt.py`.  This assumes a feature is divided into Reel bins, and will select the most recent version of each Reel from each Reel Bin.
+Found at: `examples/get_trt.py`.  A command-line program to calculate the TRT directly from your Avid project's Reel bins, without requiring any EDL/AAF/XML exports.
+
+This assumes a feature is divided into Reel bins, and will select the most recent version of each Reel from each Reel Bin.
 
 Usage for the example command-line program:
 
 ```bash
-python3 examples/get_trts.py /path/to/binsfolder/ [--head 8:00] [--tail 4:00]
+python3 examples/get_trts.py /path/to/binsfolder/ [--head 8:00] [--tail 3:23] [--trt-adjust 0:00]
 ```
 
 ![get_trts.py example](docs/get_trts.png)
