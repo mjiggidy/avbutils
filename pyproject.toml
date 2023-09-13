@@ -1,7 +1,7 @@
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 
 [project]
-name = "trtlib"
+name = "avbutils"
 description = "Lovingly calculate TRT without doing much"
 authors = [{name = "Michael Jordan", email = "michael@glowingpixel.com"}]
 
@@ -13,8 +13,8 @@ license = {file = "LICENSE"}
 dependencies = ["pyavb","timecode@git+https://github.com/mjiggidy/timecode.git#egg=timecode"]
 
 [tool.setuptools.packages.find]
-include = ["trtlib"]
+include = ["avbutils"]
 
 # https://stackoverflow.com/questions/69647590/specifying-package-data-in-pyproject-toml
 #[tool.setuptools.packages.find]
-#where = ["trtlib"]
+#where = ["avbutils"]

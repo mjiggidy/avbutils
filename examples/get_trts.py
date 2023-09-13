@@ -1,4 +1,4 @@
-import trtlib
+import avbutils
 import sys, pathlib, concurrent.futures
 from collections import namedtuple
 from timecode import Timecode
@@ -16,7 +16,7 @@ TRT_ADJUST_DURATION = Timecode("0:00")
 """Add or subtract a final duration from the total runtime (useful for adjusting for end credits, etc)"""
 
 # How to sort sequences to find the "most current"
-BIN_SORTING_METHOD = trtlib.BinSorting.DATE_MODIFIED
+BIN_SORTING_METHOD = avbutils.BinSorting.DATE_MODIFIED
 """How to sort sequences in a bin to determine the most current one"""
 
 # Results list setup
@@ -45,7 +45,7 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 
 		# Create a dict associating a subprocess with the path of the bin it's working on
 		future_info = {
-			ex.submit(trtlib.get_reel_info_from_path,
+			ex.submit(avbutils.get_reel_info_from_path,
 				bin_path=bin_path,
 				head_duration=SLATE_HEAD_DURATION,
 				tail_duration=SLATE_TAIL_DURATION,
@@ -62,7 +62,7 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 				print(f"Skipping {bin_path.name}: {e}")
 				continue
 
-			lock = trtlib.get_lockfile_for_bin(bin_path)
+			lock = avbutils.get_lockfile_for_bin(bin_path)
 
 			# Combine all the info
 			parsed_info.append(BinInfo(
@@ -87,7 +87,7 @@ def print_trts(parsed_info:list[BinInfo]):
 	print(COLUMN_SPACING.join(colname.ljust(pad) for colname, pad in HEADERS.items()))
 	print(COLUMN_SPACING.join('=' * pad for _, pad in HEADERS.items()))
 
-	for info in sorted(parsed_info, key=lambda x: trtlib.human_sort(x.reel.sequence_name)):
+	for info in sorted(parsed_info, key=lambda x: avbutils.human_sort(x.reel.sequence_name)):
 		print(COLUMN_SPACING.join(x for x in [
 			info.reel.sequence_name.ljust(HEADERS.get("Reel Name")),
 			str(info.reel.duration_adjusted).rjust(HEADERS.get("Reel TRT")),
