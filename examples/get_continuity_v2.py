@@ -1,9 +1,30 @@
-import sys, pathlib
+import sys, pathlib, dataclasses
 import avb
 import avbutils
 from timecode import Timecode, TimecodeRange
 
 USAGE = f"Usage: {__file__} path/to/bins"
+
+@dataclasses.dataclass
+class ContinuitySceneInfo:
+	"""Continuity info for an individual scene"""
+
+	scene_number:str
+	"""The scene numbeer (eg `Sc 032`)"""
+
+	duration:Timecode
+	"""Duration of the scene"""
+
+	description:str
+	"""Description of the scene"""
+
+	location:str=""
+	"""Location in which the scene takes place"""
+
+def timecode_as_duration(timecode:Timecode) -> str:
+	"""Format the timecode as a string without leading zeroes"""
+
+	return "-" if timecode.is_negative else "" + str(timecode).lstrip("0:")
 
 def is_masterclip(component:avb.components.Component) -> bool:
 	"""Is a component a masterclip?"""
@@ -14,6 +35,12 @@ def is_continuity_sequence(comp:avb.trackgroups.Composition) -> bool:
 	"""Determine if we're interested in this or not"""
 
 	return comp.name.lower().endswith("continuity")
+
+def is_intended_for_continuity(comp:avb.components.Component) -> bool:
+	"""Determine if this continuity clip is meant to be included or not (so we can exclude things like head/tail leaders)"""
+
+	# Look for text in bin column "Ignore In List"
+	return not bool(comp.attributes.get("_USER").get("Ignore In List", "").strip())
 
 def get_continuity_track_from_timeline(sequence:avb.trackgroups.Composition) -> avb.trackgroups.Track:
 
@@ -29,11 +56,13 @@ def matchback_sourceclip(source_clip:avb.components.SourceClip, bin_handle:avb.f
 
 	return bin_handle.content.find_by_mob_id(source_clip.mob_id)
 
-def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle):
+def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle) -> list[ContinuitySceneInfo]:
 
 	continuity_track = get_continuity_track_from_timeline(timeline)
 	continuity_sequence = continuity_track.component
 	continuity_subclips = get_continuity_subclips_from_sequence(continuity_sequence)
+
+	timeline_continuity:list[ContinuitySceneInfo] = list()
 
 	for continuity_subclip in continuity_subclips:
 
@@ -44,16 +73,23 @@ def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle
 			print(f"** Skipping {continuity_masterclip}")
 			continue
 
-		print(f"{continuity_masterclip.name.ljust(20)}{Timecode(continuity_subclip.length)}{' ' * 6}{continuity_masterclip.attributes.get('_USER').get('Comments','-')}")
+		if not is_intended_for_continuity(continuity_masterclip):
+			continue
 
-
-
-
-
+		timeline_continuity.append(ContinuitySceneInfo(
+			scene_number=continuity_masterclip.name or "Sc ???",
+			duration=Timecode(continuity_subclip.length, rate=round(continuity_subclip.edit_rate)),
+			description=continuity_masterclip.attributes.get("_USER").get("Comments","-"),
+			location=continuity_masterclip.attributes.get("_USER").get("Location","-")
+		))
+	
+	return timeline_continuity
 
 def get_continuity_for_all_reels_in_bin(bin_path:str):
 
 	print(f"Opening bin {pathlib.Path(bin_path).name}...")
+
+	master_trt = Timecode(0, rate=24)
 
 	with avb.open(bin_path) as bin_handle:
 
@@ -62,11 +98,23 @@ def get_continuity_for_all_reels_in_bin(bin_path:str):
 		timelines = sorted([seq for seq in avbutils.get_sequences_from_bin(bin_handle.content) if is_continuity_sequence(seq)],key=lambda x: avbutils.human_sort(x.name))
 
 		for timeline in timelines:
-			continuity_info = get_continuity_for_timeline(timeline, bin_handle)
+			
+			print("")
+			print(f"{timeline.name}:")
+			
+			continuity_scenes = get_continuity_for_timeline(timeline, bin_handle)
+			timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
 
+			for continuity_scene in continuity_scenes:
+				print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description}")
+				timeline_trt += continuity_scene.duration
+			
+			print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
+			print("")
+			master_trt += timeline_trt
 
-
-		exit()
+	print(f"Total Feature Runtime: {timecode_as_duration(master_trt)}")
+	print("")
 
 if __name__ == "__main__":
 	
