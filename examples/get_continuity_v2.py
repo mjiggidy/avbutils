@@ -85,6 +85,37 @@ def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle
 	
 	return timeline_continuity
 
+def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
+
+	print(f"{timeline.name}:")
+	
+	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
+
+	for continuity_scene in continuity_scenes:
+		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description}")
+		timeline_trt += continuity_scene.duration
+	
+	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
+
+def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
+
+	print(f"{timeline.name}:")
+	
+	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
+
+	for continuity_scene in continuity_scenes:
+
+		print('\t'.join([
+			continuity_scene.scene_number,
+			timecode_as_duration(continuity_scene.duration),
+			continuity_scene.description
+		]))
+
+		timeline_trt += continuity_scene.duration
+	
+	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
+
+
 def get_continuity_for_all_reels_in_bin(bin_path:str):
 
 	print(f"Opening bin {pathlib.Path(bin_path).name}...")
@@ -99,19 +130,14 @@ def get_continuity_for_all_reels_in_bin(bin_path:str):
 
 		for timeline in timelines:
 			
-			print("")
-			print(f"{timeline.name}:")
-			
 			continuity_scenes = get_continuity_for_timeline(timeline, bin_handle)
-			timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
-
-			for continuity_scene in continuity_scenes:
-				print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description}")
-				timeline_trt += continuity_scene.duration
 			
-			print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
 			print("")
-			master_trt += timeline_trt
+			#print_timeline_pretty(timeline, continuity_scenes)
+			print_timeline_tsv(timeline, continuity_scenes)
+			print("")
+			
+			master_trt += sum(c.duration for c in continuity_scenes)
 
 	print(f"Total Feature Runtime: {timecode_as_duration(master_trt)}")
 	print("")
