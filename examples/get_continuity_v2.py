@@ -42,9 +42,14 @@ def is_intended_for_continuity(comp:avb.components.Component) -> bool:
 	# Look for text in bin column "Ignore In List"
 	return not bool(comp.attributes.get("_USER").get("Ignore In List", "").strip())
 
-def get_continuity_track_from_timeline(sequence:avb.trackgroups.Composition) -> avb.trackgroups.Track:
+def get_continuity_tracks_from_timeline(sequence:avb.trackgroups.Composition) -> list[avb.trackgroups.Track]:
+	"""Choose the appropriate track in which the continuity clips reside"""
 
-	# Track indices start at 1
+	# Looking for a video track (media_kind="picture") with the custom name "Continuity" (track.attributes.get("_COMMENT") == "Continuity")
+
+	return [t for t in sequence.tracks if t.media_kind == "picture" and hasattr(t,"attributes") and t.attributes.get("_COMMENT","").lower() == "continuity"]
+
+	# ALT: Return top-most video track
 	return sorted([t for t in sequence.tracks if t.media_kind == "picture"], key=lambda t: t.index)[-1]
 
 def get_continuity_subclips_from_sequence(sequence:avb.components.Sequence) -> list[avb.components.Component]:
@@ -58,7 +63,11 @@ def matchback_sourceclip(source_clip:avb.components.SourceClip, bin_handle:avb.f
 
 def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle) -> list[ContinuitySceneInfo]:
 
-	continuity_track = get_continuity_track_from_timeline(timeline)
+	continuity_tracks = get_continuity_tracks_from_timeline(timeline)
+	if len(continuity_tracks) != 1:
+		raise ValueError(f"Found {len(continuity_tracks)} continuity tracks")
+	continuity_track = continuity_tracks[0]
+
 	continuity_sequence = continuity_track.component
 	continuity_subclips = get_continuity_subclips_from_sequence(continuity_sequence)
 
