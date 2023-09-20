@@ -18,8 +18,10 @@ class ContinuitySceneInfo:
 	description:str
 	"""Description of the scene"""
 
-	location:str=""
+	location:str
 	"""Location in which the scene takes place"""
+
+	time_of_day:str
 
 def timecode_as_duration(timecode:Timecode) -> str:
 	"""Format the timecode as a string without leading zeroes"""
@@ -83,7 +85,8 @@ def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition, bin_h
 			scene_number=continuity_masterclip.name or "Sc ???",
 			duration=Timecode(continuity_subclip.length, rate=round(continuity_subclip.edit_rate)),
 			description=continuity_masterclip.attributes.get("_USER").get("Comments","-"),
-			location=continuity_masterclip.attributes.get("_USER").get("Location","-")
+			location=continuity_masterclip.attributes.get("_USER").get("Location","-"),
+			time_of_day=continuity_masterclip.attributes.get("_USER").get("Time of Day","-")
 		))
 	
 	return timeline_continuity
@@ -96,7 +99,7 @@ def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scene
 	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
 
 	for continuity_scene in continuity_scenes:
-		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description}")
+		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description.ljust(48)}      {continuity_scene.time_of_day}")
 		timeline_trt += continuity_scene.duration
 	
 	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
@@ -113,7 +116,7 @@ def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:l
 			continuity_scene.scene_number,
 			timecode_as_duration(continuity_scene.duration),
 			continuity_scene.description,
-			continuity_scene.location
+			' - '.join([continuity_scene.location, continuity_scene.time_of_day])
 		]))
 		timeline_trt += continuity_scene.duration
 	
