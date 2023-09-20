@@ -26,11 +26,6 @@ def timecode_as_duration(timecode:Timecode) -> str:
 
 	return "-" if timecode.is_negative else "" + str(timecode).lstrip("0:")
 
-def is_masterclip(component:avb.components.Component) -> bool:
-	"""Is a component a masterclip?"""
-	
-	return isinstance(component, avb.trackgroups.Composition) and component.mob_type == "MasterMob"
-
 def is_continuity_sequence(comp:avb.trackgroups.Composition) -> bool:
 	"""Determine if we're interested in this or not"""
 
@@ -46,22 +41,21 @@ def get_continuity_tracks_from_timeline(sequence:avb.trackgroups.Composition) ->
 	"""Choose the appropriate track in which the continuity clips reside"""
 
 	# Looking for a video track (media_kind="picture") with the custom name "Continuity" (track.attributes.get("_COMMENT") == "Continuity")
-
 	return [t for t in sequence.tracks if t.media_kind == "picture" and hasattr(t,"attributes") and t.attributes.get("_COMMENT","").lower() == "continuity"]
 
 	# ALT: Return top-most video track
 	return sorted([t for t in sequence.tracks if t.media_kind == "picture"], key=lambda t: t.index)[-1]
 
 def get_continuity_subclips_from_sequence(sequence:avb.components.Sequence) -> list[avb.components.Component]:
+	"""Return a list of subclips (assumed to be Continuity Clips) in the given sequence"""
 
-	# NOTE: sequence.components[1:-1]  uhhh... doesn't work
+	# A sequence begins and ends with a zero-length `avb.components.Filler`, so trim those babies off
+	# TODO: Additional validation/filtering?
+	# NOTE: sequence.components[1:-1]  ...uhhh... doesn't work
 	return list(sequence.components)[1:-1]
 
-def matchback_sourceclip(source_clip:avb.components.SourceClip, bin_handle:avb.file.AVBFile) -> avb.components.Component:
-
-	return bin_handle.content.find_by_mob_id(source_clip.mob_id)
-
-def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle) -> list[ContinuitySceneInfo]:
+def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition, bin_handle) -> list[ContinuitySceneInfo]:
+	"""Get the continuity info for a given timeline/reel"""
 
 	continuity_tracks = get_continuity_tracks_from_timeline(timeline)
 	if len(continuity_tracks) != 1:
@@ -75,10 +69,10 @@ def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle
 
 	for continuity_subclip in continuity_subclips:
 
-		continuity_masterclip = matchback_sourceclip(continuity_subclip, bin_handle)
+		continuity_masterclip = avbutils.matchback_sourceclip(continuity_subclip, bin_handle)
 		
 		# Need to do a recursive matchback thing, but for now we know there won't be a big heirarchy
-		if not is_masterclip(continuity_masterclip):
+		if not avbutils.is_masterclip(continuity_masterclip):
 			print(f"** Skipping {continuity_masterclip}")
 			continue
 
@@ -95,6 +89,7 @@ def get_continuity_for_timeline(timeline:avb.trackgroups.Composition, bin_handle
 	return timeline_continuity
 
 def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
+	""""Pretty-print" the continuity"""
 
 	print(f"{timeline.name}:")
 	
@@ -107,25 +102,25 @@ def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scene
 	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
 
 def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
+	"""Output the continuity as tab-separated values"""
 
 	print(f"{timeline.name}:")
 	
 	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
 
 	for continuity_scene in continuity_scenes:
-
 		print('\t'.join([
 			continuity_scene.scene_number,
 			timecode_as_duration(continuity_scene.duration),
-			continuity_scene.description
+			continuity_scene.description,
+			continuity_scene.location
 		]))
-
 		timeline_trt += continuity_scene.duration
 	
 	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
 
-
 def get_continuity_for_all_reels_in_bin(bin_path:str):
+	"""Generate the continuity report for all reels in a given bin"""
 
 	print(f"Opening bin {pathlib.Path(bin_path).name}...")
 
@@ -134,13 +129,10 @@ def get_continuity_for_all_reels_in_bin(bin_path:str):
 	with avb.open(bin_path) as bin_handle:
 
 		print("Finding continuity sequences...")
-
-		timelines = sorted([seq for seq in avbutils.get_sequences_from_bin(bin_handle.content) if is_continuity_sequence(seq)],key=lambda x: avbutils.human_sort(x.name))
+		timelines = sorted([seq for seq in avbutils.get_timelines_from_bin(bin_handle.content) if is_continuity_sequence(seq)],key=lambda x: avbutils.human_sort(x.name))
 
 		for timeline in timelines:
-			
-			continuity_scenes = get_continuity_for_timeline(timeline, bin_handle)
-			
+			continuity_scenes = get_continuity_list_for_timeline(timeline, bin_handle)
 			print("")
 			#print_timeline_pretty(timeline, continuity_scenes)
 			print_timeline_tsv(timeline, continuity_scenes)
