@@ -23,14 +23,7 @@ Sequence?  Get the list of components (may contain filler, source clips, or some
 
 
 
-def get_video_track_from_composition(composition:avb.trackgroups.Composition, media_kind:str="picture", track_index:int=1) -> avb.components.Sequence:
-	"""Get V1 by default"""
 
-	for track in composition.tracks:
-		if track.index == track_index and track.media_kind == media_kind:
-			return track.component
-	
-	raise IndexError(f"No V{track_index} found in sequence")
 
 
 def print_masterclip_info(masterclip:avb.trackgroups.Composition, duration:TimecodeRange, kind:str):
