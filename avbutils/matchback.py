@@ -1,6 +1,7 @@
 """Helper functions for matching back components"""
 
 import avb
+from .timeline import get_video_track_from_composition
 
 def matchback_groupclip(group:avb.trackgroups.Selector, selected_track_index:int|None=None) -> avb.components.Component:
 	"""Matchback a groupclip"""
@@ -35,12 +36,47 @@ def matchback_sequence(sequence:avb.components.Sequence) -> avb.components.Compo
 	#print(f" Returning {sequence.components[1]}")
 	return sequence.components[1]
 
-def matchback_sourceclip(source_clip:avb.components.SourceClip, bin_handle:avb.file.AVBFile) -> avb.components.Component:
+def matchback_sourceclip(source_clip:avb.components.SourceClip) -> avb.components.Component:
 	"""Resolve MOB for a given `SourceClip`"""
 
-	return bin_handle.content.find_by_mob_id(source_clip.mob_id)
+	return source_clip.root.content.find_by_mob_id(source_clip.mob_id)
+
+	#return bin_handle.content.find_by_mob_id(source_clip.mob_id)
 
 def is_masterclip(component:avb.components.Component) -> bool:
 	"""Is a component a masterclip?"""
 	
 	return isinstance(component, avb.trackgroups.Composition) and component.mob_type == "MasterMob"
+
+def matchback_to_masterclip(component:avb.components.Component) -> avb.components.Component:
+	"""Given a component, match it back until we're at the masterclip"""
+
+	while not is_masterclip(component):
+
+		if isinstance(component, avb.trackgroups.Composition):
+			component = get_video_track_from_composition(component)
+
+		if isinstance(component, avb.trackgroups.Selector):
+			component = matchback_groupclip(component)
+
+		elif isinstance(component, avb.trackgroups.TrackGroup):
+			component = matchback_trackgroup(component)
+		
+		# Oooohh.... you know whaaaat.....
+		elif isinstance(component, avb.trackgroups.Track):
+			component = matchback_track(component)
+		
+		elif isinstance(component, avb.components.SourceClip):
+			component = matchback_sourceclip(component)
+
+		elif isinstance(component, avb.components.Sequence):
+			component = matchback_sequence(component)
+
+		elif isinstance(component, avb.components.Filler):
+			break
+
+		else:
+			print(component)
+			break
+		
+	return component
