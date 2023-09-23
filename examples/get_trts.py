@@ -1,5 +1,5 @@
-import avbutils
-import sys, pathlib, concurrent.futures
+import avb, avbutils
+import sys, pathlib, concurrent.futures, datetime, dataclasses
 from collections import namedtuple
 from timecode import Timecode
 
@@ -19,6 +19,9 @@ TRT_ADJUST_DURATION = Timecode("0:00")
 BIN_SORTING_METHOD = avbutils.BinSorting.DATE_MODIFIED
 """How to sort sequences in a bin to determine the most current one"""
 
+REEL_NUMBER_BIN_COLUMN_NAME = "Reel #"
+"""The name of the Avid bin column from which to extract the Reel Number"""
+
 # Results list setup
 COLUMN_SPACING = "     "
 HEADERS = {
@@ -35,6 +38,100 @@ USAGE = f"Usage: {__file__} path/to/avbs [--head {SLATE_HEAD_DURATION}] [--tail 
 
 BinInfo = namedtuple("BinInfo","reel path lock")
 
+
+@dataclasses.dataclass(frozen=True)
+class ReelInfo:
+	"""Representation of a Sequence from an Avid bin"""
+
+	sequence_name:str = str()
+	"""The name of the sequence"""
+
+	duration_total:Timecode = Timecode(0)
+	"""The total duration of the sequence"""
+
+	date_modified:datetime.datetime = datetime.datetime.now()
+	"""The date the sequence was last modified in the bin"""
+
+	reel_number:int|None = None
+	"""The number of the reel in the feature"""
+
+	duration_head_leader:Timecode|None = None
+	"""The duration of the head leader"""
+
+	duration_tail_leader:Timecode|None = None
+	"""The duration of the tail leader"""
+
+	@property
+	def duration_adjusted(self) -> Timecode:
+		"""Duration of active picture, without head or tail leaders"""
+		return max(self.duration_total - (self.duration_head_leader or 0) - (self.duration_tail_leader or 0), 0)
+	
+	@property
+	def lfoa(self) -> str:
+		"""Last frame of action at 35mm 4-perf"""
+		frame_number = max((self.duration_total - self.duration_tail_leader).frame_number - 1, 0)
+		return f"{frame_number//16}+{(frame_number%16):02}"
+
+def get_reel_number_from_timeline_attributes(attrs:avb.components.core.AVBPropertyData) -> str|None:
+	"""Extract the 'Reel #' bin column data from a sequence's attributes.  Returns None if not set."""
+
+	# Raise an exception if we weren't given property data.  Otherwise we'll treat failures as "that data just wasn't set"
+	if not isinstance(attrs, avb.components.core.AVBPropertyData):
+		raise ValueError(f"Expected AVBPropertyData, but got {type(attrs)} instead.")
+
+	try:
+		return attrs["_USER"][REEL_NUMBER_BIN_COLUMN_NAME]
+	except KeyError:
+		return None
+
+def get_reel_info(
+	sequence:avb.trackgroups.Composition,
+	head_duration:Timecode=SLATE_HEAD_DURATION,
+	tail_duration:Timecode=SLATE_TAIL_DURATION) -> ReelInfo:
+	"""Get the properties of a given sequence"""
+	
+	return ReelInfo(
+		sequence_name=sequence.name,
+		date_modified=sequence.last_modified,
+		reel_number=get_reel_number_from_timeline_attributes(sequence.attributes),
+		duration_total=Timecode(sequence.length, rate=round(sequence.edit_rate)),
+		duration_head_leader=head_duration,
+		duration_tail_leader=tail_duration
+	)
+
+def get_reel_info_from_path(
+	bin_path:pathlib.Path,
+	head_duration:Timecode=SLATE_HEAD_DURATION,
+	tail_duration:Timecode=SLATE_TAIL_DURATION,
+	sort_by:avbutils.BinSorting=avbutils.BinSorting.NAME)-> ReelInfo:
+	"""Given a Avid bin's file path, parse the bin and get the latest sequence info"""
+
+	#print("Using",str(tail_duration))
+
+	with avb.open(bin_path) as bin_handle:
+
+		# avb.file.AVBFile -> avb.bin.Bin
+		bin_contents = bin_handle.content
+		
+		# Get all sequences in bin
+		sequences = avbutils.get_timelines_from_bin(bin_contents)
+
+		# Sorting by sequence name with human sorting for version numbers
+		try:
+			latest_sequence = sorted(sequences, key=avbutils.BinSorting.get_sort_lambda(sort_by), reverse=True)[0]
+		except IndexError:
+			raise Exception(f"No sequences found in bin")
+		
+		# Get info from latest reel
+		try:
+			sequence_info = get_reel_info(latest_sequence, head_duration=head_duration, tail_duration=tail_duration)
+		except Exception as e:
+			raise Exception(f"Error parsing sequence: {e}")
+	
+	return sequence_info
+
+
+
 def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 	"""Get stats for a list of bins"""
 
@@ -45,7 +142,7 @@ def get_latest_stats_from_bins(bin_paths:list[pathlib.Path]) -> list[BinInfo]:
 
 		# Create a dict associating a subprocess with the path of the bin it's working on
 		future_info = {
-			ex.submit(avbutils.get_reel_info_from_path,
+			ex.submit(get_reel_info_from_path,
 				bin_path=bin_path,
 				head_duration=SLATE_HEAD_DURATION,
 				tail_duration=SLATE_TAIL_DURATION,
@@ -108,6 +205,7 @@ def process_args():
 	"""Look for --head/--tail options"""
 	# Yeah, yeah... I just don't like `argparse` okay?
 
+	# We might be modifying any of these here
 	global SLATE_HEAD_DURATION
 	global SLATE_TAIL_DURATION
 	global TRT_ADJUST_DURATION
@@ -143,7 +241,7 @@ def process_args():
 
 def main():
 
-	if not len(sys.argv):
+	if not len(sys.argv) > 1:
 		sys.exit(USAGE)
 
 	# Process command line arguments
@@ -152,8 +250,8 @@ def main():
 	except:
 		sys.exit(USAGE)
 
-	# Get bin paths (.avb) from the folder provided
-	bin_paths = [p for p in pathlib.Path(sys.argv[1]).glob("*.avb") if not p.stem.startswith('.')]
+	# Filter out them there dotfiles if they got globbed in there real good
+	bin_paths = [pathlib.Path(p) for p in sys.argv[1:] if not p.startswith(".")]
 	if not bin_paths:
 		sys.exit(f"No bins found at {sys.argv[1]}")
 
