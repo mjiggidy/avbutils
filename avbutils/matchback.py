@@ -1,7 +1,7 @@
 """Helper functions for matching back components"""
 
 import avb
-from .timeline import get_video_track_from_composition
+from .timeline import get_tracks_from_composition, TrackTypes
 
 def matchback_groupclip(group:avb.trackgroups.Selector, selected_track_index:int|None=None) -> avb.components.Component:
 	"""Matchback a groupclip"""
@@ -54,7 +54,7 @@ def matchback_to_masterclip(component:avb.components.Component) -> avb.component
 	while not is_masterclip(component):
 
 		if isinstance(component, avb.trackgroups.Composition):
-			component = get_video_track_from_composition(component)
+			component = next(get_tracks_from_composition(component, type=TrackTypes.PICTURE, index=1))
 
 		if isinstance(component, avb.trackgroups.Selector):
 			component = matchback_groupclip(component)
