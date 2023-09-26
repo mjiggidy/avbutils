@@ -24,10 +24,10 @@ def do_bin_good_and_nice(bin_path:str):
 		latest_timeline:avb.trackgroups.Composition = sorted(avbutils.get_timelines_from_bin(bin_handle.content), key=lambda x: avbutils.human_sort(x.name))[-1]
 		
 		print(f"{latest_timeline.name} has {len(latest_timeline.tracks)} track(s)")
+		tc_current = avbutils.get_timecode_range_for_composition(latest_timeline).start
 
-		# "Avid Sequence" is a Composition which contains tracks, each with a sequence component
-		# So V1 would be the Sequence component of Track 1 Picture
-
+		# "Avid Sequence" is a Composition, which is a type of Track Group.  Each track in a track group has a `component` property that points to something like a Sequence (for picture or audio),
+		# or a Timecode component or something like that.  So V1 would be the Sequence component of Track 1 Picture.
 		try:
 			track_v1:avb.trackgroups.Track = list(avbutils.get_tracks_from_composition(latest_timeline, type=avbutils.TrackTypes.PICTURE, index=1))[0]
 		except IndexError:
@@ -37,8 +37,6 @@ def do_bin_good_and_nice(bin_path:str):
 		sequence_v1 = track_v1.component
 		if not isinstance(sequence_v1, avb.components.Sequence):
 			raise ValueError(f"{track_v1}: Expected a sequence, but got {sequence_v1}")
-		
-		tc_current = Timecode("02:00:00:00", rate=round(sequence_v1.edit_rate))
 
 		for subclip in sequence_v1.components:
 
