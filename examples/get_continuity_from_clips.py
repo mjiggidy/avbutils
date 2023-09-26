@@ -99,7 +99,7 @@ def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scene
 	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
 
 	for continuity_scene in continuity_scenes:
-		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description.ljust(48)}      {continuity_scene.time_of_day}")
+		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description.ljust(48)}      {' - '.join([continuity_scene.location, continuity_scene.time_of_day])}")
 		timeline_trt += continuity_scene.duration
 	
 	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
@@ -122,7 +122,7 @@ def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:l
 	
 	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
 
-def get_continuity_for_all_reels_in_bin(bin_path:str):
+def get_continuity_for_all_reels_in_bin(bin_path:str, print_function=print_timeline_tsv):
 	"""Generate the continuity report for all reels in a given bin"""
 
 	print(f"Opening bin {pathlib.Path(bin_path).name}...")
@@ -138,7 +138,7 @@ def get_continuity_for_all_reels_in_bin(bin_path:str):
 			continuity_scenes = get_continuity_list_for_timeline(timeline, bin_handle)
 			print("")
 			#print_timeline_pretty(timeline, continuity_scenes)
-			print_timeline_tsv(timeline, continuity_scenes)
+			print_function(timeline, continuity_scenes)
 			print("")
 			
 			master_trt += sum(c.duration for c in continuity_scenes)
@@ -148,7 +148,13 @@ def get_continuity_for_all_reels_in_bin(bin_path:str):
 
 if __name__ == "__main__":
 	
-	if not len(sys.argv):
+	print_style = print_timeline_tsv
+
+	if "--pretty" in sys.argv:
+		print_style = print_timeline_pretty
+		del sys.argv[sys.argv.index("--pretty")]
+
+	if not len(sys.argv) > 1:
 		sys.exit(USAGE)
 	
-	get_continuity_for_all_reels_in_bin(sys.argv[1])
+	get_continuity_for_all_reels_in_bin(sys.argv[1], print_style)
