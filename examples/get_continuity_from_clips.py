@@ -23,6 +23,33 @@ class ContinuitySceneInfo:
 
 	time_of_day:str
 
+@dataclasses.dataclass
+class ReelInfo:
+	"""Continuity info per reel"""
+
+	reel_name:str
+	"""Source timeline name.  Ex: FH REEL 6 v15.3.2 - Continuity"""
+
+	reel_number:int
+	"""Example: 6"""
+
+	reel_version:str
+	"""No 'v'.  Example: 15.3.2"""
+
+	scenes:list[ContinuitySceneInfo]
+	"""The continuity info per scene in this reel"""
+
+	@property
+	def reel_duration(self) -> Timecode:
+		"""The TRT of this reel, based on total scene durations"""
+
+		return sum(scene.duration for scene in self.scenes)
+	
+	@property
+	def reel_name_short(self) -> str:
+		return f"R{self.reel_number} v{self.reel_version}"
+
+
 def timecode_as_duration(timecode:Timecode) -> str:
 	"""Format the timecode as a string without leading zeroes"""
 
