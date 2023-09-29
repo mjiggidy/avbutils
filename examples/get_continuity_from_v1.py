@@ -5,6 +5,30 @@ from timecode import Timecode, TimecodeRange
 
 USAGE = f"Usage: {__file__} path/to/bins"
 
+def print_subclip_info(subclip:avb.trackgroups.Composition, masterclip:avb.trackgroups.Composition) -> str:
+	"""Display the info of a subclip"""
+
+	sourcemob = avbutils.matchback_to_sourcemob(masterclip)
+
+	tc_masterclip = TimecodeRange(
+		start    = Timecode(avbutils.get_timecode_range_for_composition(sourcemob).start, rate=round(sourcemob.edit_rate)),
+		duration = masterclip.length
+	)
+
+	tc_subclip = TimecodeRange(
+		start    = tc_masterclip.start + subclip.start_time,
+		duration = subclip.length
+	)
+
+	clip_name    = masterclip.name
+	tape_name    = sourcemob.name
+	scene_number = masterclip.attributes.get("_USER").get("Scene")
+	take_number  = masterclip.attributes.get("_USER").get("Take")
+
+	return f"{tape_name}\t{tc_subclip.start} - {tc_subclip.end} ({str(tc_subclip.duration).lstrip('0:')})\tName: {clip_name}   Sc: {scene_number}   Tk: {take_number}"
+
+
+
 def print_masterclip_info(masterclip:avb.trackgroups.Composition, duration:TimecodeRange, kind:str):
 	"""Display info (temp?)"""
 
@@ -58,7 +82,7 @@ def do_bin_good_and_nice(bin_path:str):
 			# So, also worth knowing, the NEXT subclip will have a duration of it's "usual" in/out points, *plus* the transition on the beginning of it
 			# ...if that makes any sense.
 			if isinstance(subclip, avb.trackgroups.TransitionEffect):
-				print(f"{subclip.class_id.decode()}:\tTransition Effect ({tc_record.duration} {subclip.left_length=}\t {subclip.right_length=} {subclip.cutpoint=})")
+				print(f"{subclip.class_id.decode().ljust(11)}Transition Effect ({tc_record.duration} {subclip.left_length=}\t {subclip.right_length=} {subclip.cutpoint=})")
 				# TODO: CHECK ALL THIS REAL GOOD
 				tc_current -= tc_record.duration
 				continue
@@ -67,23 +91,32 @@ def do_bin_good_and_nice(bin_path:str):
 			# Can't matchback this fella anyway
 			# TODO: Maybe pass this through in `avbutils.matchback_to_masterclip()`
 			elif isinstance(subclip, avb.components.Filler):
-				print(f"{subclip.class_id.decode()}:\t{tc_record.start}   ({tc_record.duration})")
+				print(f"{subclip.class_id.decode().ljust(11)}\t{tc_record.start}   ({tc_record.duration})")
 				tc_current += tc_record.duration
 				continue
 
 			# NOTE: For now, handling things that `avbutils.matchback_to_masterclip()` gave up on
 			if isinstance(subclip, avb.trackgroups.TrackEffect):
-				print(f"{subclip.class_id.decode()}:\t{tc_record.start} ({tc_record.duration})\t{subclip}")
+				print(f"{subclip.class_id.decode().ljust(11)}{tc_record.start} ({tc_record.duration})\t{subclip}")
 				tc_current += tc_record.duration
 				continue
+
+			# Let's collapse the multicam first if that's what we've got
+			while isinstance(subclip, avb.trackgroups.Selector):
+				subclip = avbutils.matchback_groupclip(subclip)
 			
 
 			# Match back until we have the masterclip
 			masterclip = avbutils.matchback_to_masterclip(subclip)
 			try:
-				print_masterclip_info(masterclip, duration=tc_record, kind=subclip.class_id.decode())
+				#print_masterclip_info(masterclip, duration=tc_record, kind=subclip.class_id.decode())
+				try:
+					subclip_info = print_subclip_info(subclip=subclip, masterclip=masterclip)
+				except Exception as e:
+					subclip_info = f"{subclip}: {e}"
+				print(tc_current, "    ", subclip_info)
 			except Exception as e:
-				print(f"{masterclip}: {e}")
+				print(f"{subclip}: {e}")
 
 			# Print the info
 			tc_current += tc_record.duration
