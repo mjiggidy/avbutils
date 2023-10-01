@@ -1,9 +1,10 @@
-import sys, pathlib, dataclasses
-import avb
-import avbutils
+import sys, pathlib, dataclasses, re
+import avb, avbutils, numbers_parser
 from timecode import Timecode, TimecodeRange
 
 USAGE = f"Usage: {__file__} path/to/bins"
+
+pat_reelname = re.compile(r"FH REEL (?P<reel_number>\d+) v(?P<reel_version>[\d\.]+)", re.I)
 
 @dataclasses.dataclass
 class ContinuitySceneInfo:
@@ -36,11 +37,14 @@ class ReelInfo:
 	reel_version:str
 	"""No 'v'.  Example: 15.3.2"""
 
+	reel_timecode_range:TimecodeRange
+	"""The start/end Timecode range of this timeline"""
+
 	scenes:list[ContinuitySceneInfo]
 	"""The continuity info per scene in this reel"""
 
 	@property
-	def reel_duration(self) -> Timecode:
+	def reel_trt(self) -> Timecode:
 		"""The TRT of this reel, based on total scene durations"""
 
 		return sum(scene.duration for scene in self.scenes)
@@ -83,7 +87,82 @@ def get_continuity_subclips_from_sequence(sequence:avb.components.Sequence) -> l
 	# NOTE: sequence.components[1:-1]  ...uhhh... doesn't work
 	return list(sequence.components)[1:-1]
 
-def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition, bin_handle) -> list[ContinuitySceneInfo]:
+
+def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
+	""""Pretty-print" the continuity"""
+
+	print(f"{timeline.name}:")
+	
+	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
+
+	for continuity_scene in continuity_scenes:
+		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description.ljust(48)}      {' - '.join([continuity_scene.location, continuity_scene.time_of_day])}")
+		timeline_trt += continuity_scene.duration
+	
+	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
+
+def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
+	"""Output the continuity as tab-separated values"""
+
+	print(f"{timeline.name}:")
+	
+	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
+
+	for continuity_scene in continuity_scenes:
+		print('\t'.join([
+			continuity_scene.scene_number,
+			timecode_as_duration(continuity_scene.duration),
+			continuity_scene.description,
+			' - '.join([continuity_scene.location, continuity_scene.time_of_day])
+		]))
+		timeline_trt += continuity_scene.duration
+	
+	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
+
+def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
+	"""Create a Numbers document for the given"""
+
+	doc = numbers_parser.Document()
+	doc.add_sheet(sheet_name="Continuity (Timings)", num_cols=5)
+	sheet = doc.sheets["Continuity (Timings)"]
+	table = sheet.tables[0]
+
+	row_num = 0
+#	table.add_row(3)
+
+	table.write(row_num, 1, "Scene")
+	table.write(row_num, 2, "Duration")
+	table.write(row_num, 3, "Scene Description")
+	table.write(row_num, 4, "Location")
+	row_num += 1
+
+	for reel_info in reels_info:
+
+		row_start = row_num
+
+		for scene_info in reel_info.scenes:
+
+			table.write(row_num, 1, scene_info.scene_number)
+			table.write(row_num, 2, str(scene_info.duration).lstrip("0:"))
+			table.write(row_num, 3, scene_info.description)
+			table.write(row_num, 4, scene_info.location)
+			row_num += 1
+		
+		row_end = row_num-1
+
+		# Write Reel Info Column
+		# TODO: Handle reels with scenes < reel info rows
+		table.write(row_start, 0, f"R{reel_info.reel_number} v{reel_info.reel_version}")
+		table.write(row_end-1, 0, f"R{reel_info.reel_number} TRT:")
+		table.write(row_end, 0,str(reel_info.reel_trt).lstrip("0:"))
+		#table.merge_cells([table.cell(x,0).xl_rowcol_to_cell for x in range(row_start,row_end-2)])
+		
+		row_num += 1
+
+	doc.save(output_path)
+
+
+def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition) -> list[ContinuitySceneInfo]:
 	"""Get the continuity info for a given timeline/reel"""
 
 	continuity_tracks = get_continuity_tracks_from_timeline(timeline)
@@ -118,36 +197,22 @@ def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition, bin_h
 	
 	return timeline_continuity
 
-def print_timeline_pretty(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
-	""""Pretty-print" the continuity"""
+def get_continuity_for_reel(timeline:avb.trackgroups.Composition) -> ReelInfo:
+	"""Get the continuity of a given reel"""
+			
+	reelname_match = pat_reelname.match(timeline.name)
+	if not reelname_match:
+		print(f"Timeline name does not match the usual format: {timeline.name}")
 
-	print(f"{timeline.name}:")
-	
-	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
+	continuity_scenes = get_continuity_list_for_timeline(timeline)
 
-	for continuity_scene in continuity_scenes:
-		print(f" - {continuity_scene.scene_number.ljust(20)}{timecode_as_duration(continuity_scene.duration).rjust(11)}      {continuity_scene.description.ljust(48)}      {' - '.join([continuity_scene.location, continuity_scene.time_of_day])}")
-		timeline_trt += continuity_scene.duration
-	
-	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
-
-def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:list[ContinuitySceneInfo]):
-	"""Output the continuity as tab-separated values"""
-
-	print(f"{timeline.name}:")
-	
-	timeline_trt = Timecode(0, rate=round(timeline.edit_rate))
-
-	for continuity_scene in continuity_scenes:
-		print('\t'.join([
-			continuity_scene.scene_number,
-			timecode_as_duration(continuity_scene.duration),
-			continuity_scene.description,
-			' - '.join([continuity_scene.location, continuity_scene.time_of_day])
-		]))
-		timeline_trt += continuity_scene.duration
-	
-	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
+	return ReelInfo(
+		reel_name=reelname_match.group(0),
+		reel_number=reelname_match.group("reel_number"),
+		reel_version=reelname_match.group("reel_version"),
+		reel_timecode_range=avbutils.get_timecode_range_for_composition(timeline),
+		scenes = continuity_scenes
+	)
 
 def get_continuity_for_all_reels_in_bin(bin_path:str, print_function=print_timeline_tsv):
 	"""Generate the continuity report for all reels in a given bin"""
@@ -161,14 +226,14 @@ def get_continuity_for_all_reels_in_bin(bin_path:str, print_function=print_timel
 		print("Finding continuity sequences...")
 		timelines = sorted([seq for seq in avbutils.get_timelines_from_bin(bin_handle.content) if is_continuity_sequence(seq)],key=lambda x: avbutils.human_sort(x.name))
 
+		reels:list[ReelInfo] = list()
+
 		for timeline in timelines:
-			continuity_scenes = get_continuity_list_for_timeline(timeline, bin_handle)
-			print("")
-			#print_timeline_pretty(timeline, continuity_scenes)
-			print_function(timeline, continuity_scenes)
-			print("")
+			reels.append(get_continuity_for_reel(timeline))
 			
-			master_trt += sum(c.duration for c in continuity_scenes)
+		master_trt = sum(reel.reel_trt for reel in reels)
+
+		print_numbers_doc(reels)
 
 	print(f"Total Feature Runtime: {timecode_as_duration(master_trt)}")
 	print("")
