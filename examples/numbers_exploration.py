@@ -1,17 +1,16 @@
 import sys
-from numbers_parser import Document
+from numbers_parser import Document, Table
 
 doc = Document(sys.argv[1])
 print(doc)
 
-sheets = doc.sheets
+sheet = doc.sheets[0]
 
-curr_sheet = sheets[0]
-print(curr_sheet.name)
-exit()
+print(sheet.name)
 
-tables = sheets[0].tables
-print(tables)
+table = sheet.tables[0]
 
-rows = tables[0].rows()
-print(rows)
+print(table.name)
+
+
+#doc.save("new.numbers")1
