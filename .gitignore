@@ -1,5 +1,6 @@
 # Test files are SECRET
 bin_examples
+testfiles
 .*
 
 # Byte-compiled / optimized / DLL files
