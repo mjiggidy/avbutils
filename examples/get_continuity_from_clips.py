@@ -123,7 +123,7 @@ def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:l
 def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	"""Create a Numbers document for the given"""
 
-	doc = numbers_parser.Document()
+	doc = numbers_parser.Document(pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
 
 	# Setup styles
 	style_scene_duration = doc.add_style(
@@ -150,24 +150,33 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 		bold = True
 	)
 
+	style_reel_column = doc.add_style(
+		bg_color = numbers_parser.RGB(128, 150, 200)
+	)
+
 	style_blank_row = doc.add_style(
 		bg_color = numbers_parser.RGB(255,255,255)
 	)
 
-	doc.add_sheet(sheet_name="Continuity (Timings)", num_cols=5)
-	sheet = doc.sheets["Continuity (Timings)"]
+	sheet = doc.sheets[0]
+	#sheet.name = "Continuity (Timings)"
+	#sheet.add_table("Continuity Per Reel")
 	table = sheet.tables[0]
 
 	table.num_header_cols = 0
 
 	row_num = 0
-#	table.add_row(3)
 
 	table.write(row_num, 1, "Scene")
 	table.write(row_num, 2, "Duration")
 	table.write(row_num, 3, "Scene Description")
 	table.write(row_num, 4, "Location")
+	
 	row_num += 1
+	table.write(row_num, 1, "")
+	row_num += 1
+	
+	table.num_header_rows = 2
 
 	for reel_info in reels_info:
 
@@ -199,13 +208,26 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 		
 		table.merge_cells(numbers_parser.xl_rowcol_to_cell(row_start,0)+":"+numbers_parser.xl_rowcol_to_cell(row_end-2,0))
 
+		# BORDERS AHOY
+
+		# Clear out reel column header
+		[table.set_cell_border(x, 0, ["top", "bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(row_start, row_end+1)]
+
+		# Add side border to reel column header
+		[table.set_cell_border(x, 1, ["left"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+		# Reel column backround color
+		[table.set_cell_style(x, 0, style_reel_column) for x in range(row_start, row_end+1)]
+
 		# Draw a border around dat reel
-		#border_range = numbers_parser.xl_rowcol_to_cell(row_start, 0) + ":" + numbers_parser.xl_rowcol_to_cell(row_end, 5)
-		#table.set_cell_border(border_range, ["top","bottom","left","right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid"))
+		[table.set_cell_border(row_start, x, ["top"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(5)]
+		[table.set_cell_border(row_end, x, ["bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(5)]
+		[table.set_cell_border(x, 0, ["left"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+		[table.set_cell_border(x, 4, ["right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+
 		
 		# Blank row
+		[table.set_cell_border(row_num, x, ["left","right"], numbers_parser.Border(0.0, numbers_parser.RGB(0, 0, 0), "none")) for x in range(5)]
 		row_num += 1
-		#table.set_cell_border(row_num, 0, ["left","right"], numbers_parser.Border(0.0, numbers_parser.RGB(0, 0, 0), "none"), 5)
 
 	# Write LP TRT
 	table.write(row_num-1, 0, "LP TRT:")
