@@ -159,7 +159,10 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 		[table.set_cell_border(row_num, x, ["left","right"], numbers_parser.Border(0.0, numbers_parser.RGB(0, 0, 0), "none")) for x in range(5)]
 
 	doc = numbers_parser.Document(pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
+	
 	default_style = doc.styles["Table Style 2"]
+	default_style.alignment = numbers_parser.Alignment("left","top")
+	default_style.text_inset = 0
 
 
 	#print(doc.styles.keys())
@@ -169,13 +172,13 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	style_scene_duration = _doc_style_from_existing(
 		doc=doc,
 		existing=default_style,
-		alignment = numbers_parser.Alignment("right")
+		alignment = numbers_parser.Alignment("right","top")
 	)
 
 	style_scene_location = _doc_style_from_existing(
 		doc=doc,
 		existing=default_style,
-		alignment = numbers_parser.Alignment("right"),
+		alignment = numbers_parser.Alignment("right","top"),
 		italic = True
 	)
 
@@ -188,21 +191,21 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	style_reel_trt = _doc_style_from_existing( 
 		doc=doc,
 		existing=style_reel_column,
-		alignment = numbers_parser.Alignment("right"),
+		alignment = numbers_parser.Alignment("right","top"),
 		italic = True
 	)
 
 	style_lp_label = _doc_style_from_existing( 
 		doc=doc,
-		existing=default_style,
+		existing=style_reel_column,
 		bold=True
 	)
 
 	style_lp_trt = _doc_style_from_existing(
 		doc=doc,
-		existing=default_style,
-		alignment = numbers_parser.Alignment("right"),
-		italic = True,
+		existing=style_reel_trt,
+		#alignment = numbers_parser.Alignment("right"),
+		#italic = True,
 		bold = True
 	)
 
@@ -210,6 +213,8 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 		doc=doc,
 		existing=default_style,
 		bg_color = numbers_parser.RGB(63, 103, 151),
+		font_size = 13.0,
+		alignment = numbers_parser.Alignment("center","top"),
 		bold = True
 	)
 
@@ -259,7 +264,7 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 			
 			table.write(row_num, 2, str(scene_info.duration).lstrip("0:"), style=numbers_parser.Style(alignment=("right","top"), bold=True))
 			table.set_cell_style(row_num, 2, style_scene_duration)
-
+			
 			table.write(row_num, 3, scene_info.description)
 			
 			table.write(row_num, 4, scene_info.location)
@@ -300,9 +305,15 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	# Write LP TRT
 	table.write(row_num-1, 0, "LP TRT:")
 	table.set_cell_style(row_num-1, 0, style_lp_label)
-	
+	table.set_cell_border(row_num-1, 0, ["left","right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid"))
+
 	table.write(row_num, 0, str(sum(reel.reel_trt for reel in reels_info)).lstrip("0:"))
 	table.set_cell_style(row_num, 0, style_lp_trt)
+	table.set_cell_border(row_num, 0, ["left","right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid"))
+
+	[table.set_cell_border(row_num-1, x, ["right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(1,5)]
+	[table.set_cell_border(row_num,   x, ["right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(1,5)]
+
 
 	output_path_final = pathlib.Path(output_path)
 
@@ -315,6 +326,17 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 			name_base = output_path_final.stem
 			name_digits = "_001"
 		output_path_final = output_path_final.with_stem(name_base + name_digits)
+
+	
+	# Cleanup formatting
+	DEFAULT_HEIGHT = 14
+	DEFAULT_WIDTHS = [70, 90, 54, 305, 170]
+	for idx, row in enumerate(table.rows()):
+		[table.col_width(x, DEFAULT_WIDTHS[x]) for x in range(5)]
+		table.row_height(idx, 14)
+	
+	# Too much cleanup
+	table.row_height(0, 18)
 			
 	
 	doc.save(output_path_final)
