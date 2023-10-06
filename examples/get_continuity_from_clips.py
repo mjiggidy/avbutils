@@ -1,4 +1,4 @@
-import sys, pathlib, dataclasses, re
+import sys, pathlib, dataclasses, re, copy
 import avb, avbutils, numbers_parser
 from timecode import Timecode, TimecodeRange
 
@@ -123,38 +123,99 @@ def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:l
 def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	"""Create a Numbers document for the given"""
 
+
+	def _doc_style_from_existing(doc:numbers_parser.Document, existing:numbers_parser.Style, **kwargs) -> numbers_parser.Style:
+		"""Add a document style based on an existing"""
+
+		return doc.add_style(
+			alignment     = kwargs["alignment"] if "alignment" in kwargs else existing.alignment,
+			bg_image      = kwargs["bg_image"] if "bg_image" in kwargs else existing.bg_image,
+			bg_color      = kwargs["bg_color"] if "bg_color" in kwargs else existing.bg_color,
+			font_color    = kwargs["font_color"] if "font_color" in kwargs else existing.font_color,
+			font_size     = kwargs["font_size"] if "font_size" in kwargs else existing.font_size,
+			font_name     = kwargs["font_name"] if "font_name" in kwargs else existing.font_name,
+			bold          = kwargs["bold"] if "bold" in kwargs else existing.bold,
+			italic        = kwargs["italic"] if "italic" in kwargs else existing.italic,
+			strikethrough = kwargs["strikethrough"] if "strikethrough" in kwargs else existing.strikethrough,
+			underline     = kwargs["underline"] if "underline" in kwargs else existing.underline,
+			first_indent  = kwargs["first_indent"] if "first_indent" in kwargs else existing.first_indent,
+			left_indent   = kwargs["left_indent"] if "left_indent" in kwargs else existing.left_indent,
+			right_indent  = kwargs["right_indent"] if "right_indent" in kwargs else existing.right_indent,
+			text_inset    = kwargs["text_inset"] if "text_inset" in kwargs else existing.text_inset,
+			text_wrap     = kwargs["text_wrap"] if "text_wrap" in kwargs else existing.text_wrap,
+			name          = kwargs["text_wrap"] if "text_wrap" in kwargs else None
+		)
+
+
+	def _draw_borders(table:numbers_parser.document.Table, row_start:int, row_end:int, col_start:int, col_end:int):
+		"""Draw borders around a range of cells"""
+
+		[table.set_cell_border(row_start, x, ["top"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(col_end+1)]
+		[table.set_cell_border(row_end, x, ["bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(col_end+1)]
+		[table.set_cell_border(x, col_start, ["left"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+		[table.set_cell_border(x, col_end, ["right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+
+	def _draw_blank_row(table:numbers_parser.document.Table):
+		[table.set_cell_border(row_num, x, ["left","right"], numbers_parser.Border(0.0, numbers_parser.RGB(0, 0, 0), "none")) for x in range(5)]
+
 	doc = numbers_parser.Document(pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
+	default_style = doc.styles["Table Style 2"]
+
+
+	#print(doc.styles.keys())
+	#exit()
 
 	# Setup styles
-	style_scene_duration = doc.add_style(
+	style_scene_duration = _doc_style_from_existing(
+		doc=doc,
+		existing=default_style,
 		alignment = numbers_parser.Alignment("right")
 	)
 
-	style_scene_location = doc.add_style(
+	style_scene_location = _doc_style_from_existing(
+		doc=doc,
+		existing=default_style,
 		alignment = numbers_parser.Alignment("right"),
 		italic = True
 	)
 
-	style_reel_trt = doc.add_style(
+	style_reel_column = _doc_style_from_existing(
+		doc=doc,
+		existing=default_style,
+		bg_color = numbers_parser.RGB(123, 161, 205)
+	)
+
+	style_reel_trt = _doc_style_from_existing( 
+		doc=doc,
+		existing=style_reel_column,
 		alignment = numbers_parser.Alignment("right"),
 		italic = True
 	)
 
-	style_lp_label = doc.add_style(
+	style_lp_label = _doc_style_from_existing( 
+		doc=doc,
+		existing=default_style,
 		bold=True
 	)
 
-	style_lp_trt = doc.add_style(
+	style_lp_trt = _doc_style_from_existing(
+		doc=doc,
+		existing=default_style,
 		alignment = numbers_parser.Alignment("right"),
 		italic = True,
 		bold = True
 	)
 
-	style_reel_column = doc.add_style(
-		bg_color = numbers_parser.RGB(128, 150, 200)
+	style_header_column = _doc_style_from_existing(
+		doc=doc,
+		existing=default_style,
+		bg_color = numbers_parser.RGB(63, 103, 151),
+		bold = True
 	)
 
-	style_blank_row = doc.add_style(
+	style_blank_row = _doc_style_from_existing(
+		doc=doc,
+		existing=default_style,
 		bg_color = numbers_parser.RGB(255,255,255)
 	)
 
@@ -163,7 +224,6 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	#sheet.add_table("Continuity Per Reel")
 	table = sheet.tables[0]
 
-	table.num_header_cols = 0
 
 	row_num = 0
 
@@ -171,12 +231,23 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	table.write(row_num, 2, "Duration")
 	table.write(row_num, 3, "Scene Description")
 	table.write(row_num, 4, "Location")
+
+	[table.set_cell_style(row_num, x, style_header_column) for x in range(1,5)]
+	table.set_cell_style(row_num, 0, style_blank_row)
+	_draw_borders(table, row_num, row_num, 1, 4)
+	table.set_cell_border(row_num, 0, ["left","top","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none"))
 	
 	row_num += 1
-	table.write(row_num, 1, "")
-	row_num += 1
+	_draw_blank_row(table)
+	#table.write(row_num, 1, "")
 	
-	table.num_header_rows = 2
+	table.num_header_cols = 0
+	table.num_header_rows = 1
+
+	_draw_blank_row(table)
+	[table.set_cell_style(row_num, x, style_blank_row) for x in range(5)]
+
+	row_num += 1
 
 	for reel_info in reels_info:
 
@@ -204,7 +275,6 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 		table.write(row_end-1, 0, f"R{reel_info.reel_number} TRT:")
 		table.write(row_end, 0, str(reel_info.reel_trt).lstrip("0:"))
 		
-		table.set_cell_style(row_end, 0, style_reel_trt)
 		
 		table.merge_cells(numbers_parser.xl_rowcol_to_cell(row_start,0)+":"+numbers_parser.xl_rowcol_to_cell(row_end-2,0))
 
@@ -218,15 +288,13 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 		# Reel column backround color
 		[table.set_cell_style(x, 0, style_reel_column) for x in range(row_start, row_end+1)]
 
+		table.set_cell_style(row_end, 0, style_reel_trt)
 		# Draw a border around dat reel
-		[table.set_cell_border(row_start, x, ["top"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(5)]
-		[table.set_cell_border(row_end, x, ["bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(5)]
-		[table.set_cell_border(x, 0, ["left"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
-		[table.set_cell_border(x, 4, ["right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+		_draw_borders(table, row_start, row_end, 0, 4)
 
 		
 		# Blank row
-		[table.set_cell_border(row_num, x, ["left","right"], numbers_parser.Border(0.0, numbers_parser.RGB(0, 0, 0), "none")) for x in range(5)]
+		_draw_blank_row(table)
 		row_num += 1
 
 	# Write LP TRT
