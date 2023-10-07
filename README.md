@@ -1,6 +1,6 @@
 # avbutils
 
-This is a sort of wrapper around the amazing [`pyavb`](https://github.com/markreidvfx/pyavb) library, with tools and utilities for assistant editors such as myself.  `avbutils` allows you to programmatically read Avid bins directly, without the usual need to export EDLs/AAFs/XMLs.
+This is a sort of wrapper around the amazing [`pyavb`](https://github.com/markreidvfx/pyavb) library.  Essentially, [`pyavb`](https://github.com/markreidvfx/pyavb) provides the capability to programmatically interact with Avid bins, allowing you to read and write them directly. `avbutils`, in turn, contextualizes these capabilities, making them more accessible and intuitive for assistant editors and the like (such as myself).
 
 ## Example Programs
 
