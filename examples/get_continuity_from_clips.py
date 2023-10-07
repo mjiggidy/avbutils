@@ -1,4 +1,4 @@
-import sys, pathlib, dataclasses, re, copy
+import sys, pathlib, dataclasses, re, warnings
 import avb, avbutils, numbers_parser
 from timecode import Timecode, TimecodeRange
 
@@ -120,9 +120,14 @@ def print_timeline_tsv(timeline:avb.trackgroups.Composition, continuity_scenes:l
 	
 	print(f"Reel TRT: {timecode_as_duration(timeline_trt)}")
 
-def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
+def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers", template_path:str|None=None):
 	"""Create a Numbers document for the given"""
 
+	def _num_columns(table:numbers_parser.document.Table) -> int:
+		"""Return the number of columns in a table"""
+		# TODO: Probably really slow
+
+		return max(len(row) for row in table.rows())
 
 	def _doc_style_from_existing(doc:numbers_parser.Document, existing:numbers_parser.Style, **kwargs) -> numbers_parser.Style:
 		"""Add a document style based on an existing"""
@@ -146,27 +151,25 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 			name          = kwargs["text_wrap"] if "text_wrap" in kwargs else None
 		)
 
-
-	def _draw_borders(table:numbers_parser.document.Table, row_start:int, row_end:int, col_start:int, col_end:int):
+	def _draw_borders(table:numbers_parser.document.Table, row_start:int, row_end:int, col_start:int, col_end:int, border_style=None):
 		"""Draw borders around a range of cells"""
 
-		[table.set_cell_border(row_start, x, ["top"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(col_end+1)]
-		[table.set_cell_border(row_end, x, ["bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(col_end+1)]
-		[table.set_cell_border(x, col_start, ["left"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
-		[table.set_cell_border(x, col_end, ["right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+		border_style = border_style or numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")
+
+		with warnings.catch_warnings():
+			[table.set_cell_border(row_start, x,  ["top"], border_style) for x in range(col_end+1)]
+			[table.set_cell_border(row_end, x, ["bottom"], border_style) for x in range(col_end+1)]
+			[table.set_cell_border(x, col_start, ["left"], border_style) for x in range(row_start, row_end+1)]
+			[table.set_cell_border(x, col_end,  ["right"], border_style) for x in range(row_start, row_end+1)]
 
 	def _draw_blank_row(table:numbers_parser.document.Table):
 		[table.set_cell_border(row_num, x, ["left","right"], numbers_parser.Border(0.0, numbers_parser.RGB(0, 0, 0), "none")) for x in range(5)]
 
-	doc = numbers_parser.Document(pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
+	doc = numbers_parser.Document(template_path) or numbers_parser.Document()
 	
 	default_style = doc.styles["Table Style 2"]
 	default_style.alignment = numbers_parser.Alignment("left","top")
 	default_style.text_inset = 0
-
-
-	#print(doc.styles.keys())
-	#exit()
 
 	# Setup styles
 	style_scene_duration = _doc_style_from_existing(
@@ -232,14 +235,13 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 
 	row_num = 0
 
-	table.write(row_num, 1, "Scene")
-	table.write(row_num, 2, "Duration")
-	table.write(row_num, 3, "Scene Description")
-	table.write(row_num, 4, "Location")
+	table.write(row_num, 1, "Scene", style=style_header_column)
+	table.write(row_num, 2, "Duration", style=style_header_column)
+	table.write(row_num, 3, "Scene Description", style=style_header_column)
+	table.write(row_num, 4, "Location", style=style_header_column)
 
-	[table.set_cell_style(row_num, x, style_header_column) for x in range(1,5)]
 	table.set_cell_style(row_num, 0, style_blank_row)
-	_draw_borders(table, row_num, row_num, 1, 4)
+	_draw_borders(table, row_num, row_num, 1, _num_columns(table)-1)
 	table.set_cell_border(row_num, 0, ["left","top","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none"))
 	
 	row_num += 1
@@ -250,7 +252,7 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	table.num_header_rows = 1
 
 	_draw_blank_row(table)
-	[table.set_cell_style(row_num, x, style_blank_row) for x in range(5)]
+	[table.set_cell_style(row_num, x, style_blank_row) for x in range(_num_columns(table))]
 
 	row_num += 1
 
@@ -260,15 +262,11 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 
 		for scene_info in reel_info.scenes:
 
-			table.write(row_num, 1, scene_info.scene_number)
+			table.write(row_num, 1, scene_info.scene_number, style=default_style)
 			
-			table.write(row_num, 2, str(scene_info.duration).lstrip("0:"), style=numbers_parser.Style(alignment=("right","top"), bold=True))
-			table.set_cell_style(row_num, 2, style_scene_duration)
-			
-			table.write(row_num, 3, scene_info.description)
-			
-			table.write(row_num, 4, scene_info.location)
-			table.set_cell_style(row_num, 4, style_scene_location)
+			table.write(row_num, 2, str(scene_info.duration).lstrip("0:"), style=style_scene_duration)
+			table.write(row_num, 3, scene_info.description, style=default_style)
+			table.write(row_num, 4, ' - '.join([scene_info.location, scene_info.time_of_day]), style=style_scene_location)
 
 			row_num += 1
 		
@@ -290,29 +288,27 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 
 		# Add side border to reel column header
 		[table.set_cell_border(x, 1, ["left"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid")) for x in range(row_start, row_end+1)]
+
 		# Reel column backround color
 		[table.set_cell_style(x, 0, style_reel_column) for x in range(row_start, row_end+1)]
-
 		table.set_cell_style(row_end, 0, style_reel_trt)
-		# Draw a border around dat reel
-		_draw_borders(table, row_start, row_end, 0, 4)
 
+		# Draw a border around dat reel
+		_draw_borders(table, row_start, row_end, 0, _num_columns(table)-1)
 		
 		# Blank row
 		_draw_blank_row(table)
 		row_num += 1
 
 	# Write LP TRT
-	table.write(row_num-1, 0, "LP TRT:")
-	table.set_cell_style(row_num-1, 0, style_lp_label)
+	table.write(row_num-1, 0, "LP TRT:", style=style_lp_label)
 	table.set_cell_border(row_num-1, 0, ["left","right"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid"))
 
-	table.write(row_num, 0, str(sum(reel.reel_trt for reel in reels_info)).lstrip("0:"))
-	table.set_cell_style(row_num, 0, style_lp_trt)
+	table.write(row_num, 0, str(sum(reel.reel_trt for reel in reels_info)).lstrip("0:"), style=style_lp_trt)
 	table.set_cell_border(row_num, 0, ["left","right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "solid"))
 
-	[table.set_cell_border(row_num-1, x, ["right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(1,5)]
-	[table.set_cell_border(row_num,   x, ["right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(1,5)]
+	[table.set_cell_border(row_num-1, x, ["right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(1,_num_columns(table))]
+	[table.set_cell_border(row_num,   x, ["right","bottom"], numbers_parser.Border(2.0, numbers_parser.RGB(0,0,0), "none")) for x in range(1,_num_columns(table))]
 
 
 	output_path_final = pathlib.Path(output_path)
@@ -330,10 +326,10 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers"):
 	
 	# Cleanup formatting
 	DEFAULT_HEIGHT = 14
-	DEFAULT_WIDTHS = [70, 90, 54, 305, 170]
+	DEFAULT_WIDTHS = [62, 90, 60, 305, 200]
 	for idx, row in enumerate(table.rows()):
-		[table.col_width(x, DEFAULT_WIDTHS[x]) for x in range(5)]
-		table.row_height(idx, 14)
+		[table.col_width(x, DEFAULT_WIDTHS[x]) for x in range(_num_columns(table))]
+		table.row_height(idx, DEFAULT_HEIGHT)
 	
 	# Too much cleanup
 	table.row_height(0, 18)
@@ -413,7 +409,7 @@ def get_continuity_for_all_reels_in_bin(bin_path:str, print_function=print_timel
 			
 		master_trt = sum(reel.reel_trt for reel in reels)
 
-		print_numbers_doc(reels)
+		print_numbers_doc(reels, output_path="out.numbers", template_path=pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
 
 	print(f"Total Feature Runtime: {timecode_as_duration(master_trt)}")
 	print("")
