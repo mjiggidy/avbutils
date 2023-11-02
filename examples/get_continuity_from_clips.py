@@ -337,6 +337,8 @@ def print_numbers_doc(reels_info:list[ReelInfo], output_path:str="out.numbers", 
 	
 	doc.save(output_path_final)
 
+	return output_path_final
+
 
 def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition) -> list[ContinuitySceneInfo]:
 	"""Get the continuity info for a given timeline/reel"""
@@ -409,10 +411,14 @@ def get_continuity_for_all_reels_in_bin(bin_path:str, print_function=print_timel
 			
 		master_trt = sum(reel.reel_trt for reel in reels)
 
-		print_numbers_doc(reels, output_path="out.numbers", template_path=pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
+		numbers_filename = pathlib.Path(bin_path).with_suffix(".numbers").name
+
+		final_path = print_numbers_doc(reels, output_path=numbers_filename, template_path=pathlib.Path(__file__).parent / "templates/FHS_Continuity_template.numbers")
 
 	print(f"Total Feature Runtime: {timecode_as_duration(master_trt)}")
 	print("")
+
+	print("Nubmers document output to", final_path)
 
 if __name__ == "__main__":
 	
