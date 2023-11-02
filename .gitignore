@@ -1,6 +1,8 @@
 # Test files are SECRET
 bin_examples
+testfiles
 .*
+*.numbers
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
