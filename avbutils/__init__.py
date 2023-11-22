@@ -1,5 +1,6 @@
 """Helper functions and utilities for `pyavb`"""
 
+from .bins import *
 from .sorting import *
 from .matchback import *
 from .lockfile import *
