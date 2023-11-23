@@ -22,6 +22,11 @@ def show_bin_info(bin:avb.bin.Bin):
 	print(f"Mac font:     {bin.mac_font=} {bin.mac_font_size=}")
 	print(f"Image Scale:  {bin.mac_image_scale=} {bin.ql_image_scale=}")
 	print(f"Home rect:    {bin.home_rect=}")
+	print(f"Colors (16b?):{bin.background_color=} {bin.forground_color=}")
+	print("Was iconic?: ", bin.was_iconic)
+	print("Large bin?:  ", bin.large_bin)
+	print("Sifted?:     ", bin.sifted)
+	print("Sift Params: ", bin.sifted_settings)
 
 def show_bin_info_from_file(bin_path:str):
 	"""Given a file path to a bin, print bin info"""
