@@ -67,3 +67,36 @@ class BinDisplayOptions(enum.IntFlag):
 	def get_options_from_bin(cls, bin:avb.bin.Bin) -> "BinDisplayOptions":
 		"""Return the `BinDisplayModes` value for a given bin"""
 		return cls(bin.display_mask)
+	
+class BinSortDirection(enum.IntEnum):
+	"""Direction the BinSortMethod will sort"""
+	
+	ASCENDING  = 0
+	"""0-9; A-Z"""
+
+	DESCENDING = 1
+	"""Z-A; 9-0"""
+
+class BinSiftMethod(enum.IntEnum):
+	"""Methods for sifting"""
+
+	# NOTE: SiftItems are listed in reverse order
+
+	CONTAINS = 1
+	"""Column contains a given string"""
+
+	BEGINS_WITH = 2
+	"""Column begins with a given string"""
+
+	MATCHES_EXACTLY = 3
+	"""Column matches exactly a given string"""
+
+	@classmethod
+	def from_sift_item(cls, sift_item:avb.bin.SiftItem) -> "BinSiftMethod":
+		"""Lookup the sift method based on the method `int`"""
+		return cls(sift_item.method)
+	
+	@classmethod
+	def from_bin(cls, bin:avb.bin.Bin) -> list["BinSiftMethod"]:
+		# NOTE: Does this make sense to do?
+		return [cls.from_sift_item(item) for item in bin.sifted_settings]

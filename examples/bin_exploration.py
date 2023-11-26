@@ -1,43 +1,6 @@
 import sys, enum, pprint
 import avb, avbutils
 
-class BinSortDirection(enum.IntEnum):
-	"""Direction the BinSortMethod will sort"""
-
-	# TODO: Add this to `avbutils.sorting` or `.bin` or something
-	
-	ASCENDING  = 0
-	"""0-9; A-Z"""
-
-	DESCENDING = 1
-	"""Z-A; 9-0"""
-
-class BinSiftMethod(enum.IntEnum):
-	"""Methods for sifting"""
-
-	# NOTE: SiftItems are listed in reverse order
-
-	CONTAINS = 1
-	"""Column contains a given string"""
-
-	BEGINS_WITH = 2
-	"""Column begins with a given string"""
-
-	MATCHES_EXACTLY = 3
-	"""Column matches exactly a given string"""
-
-	@classmethod
-	def from_sift_item(cls, sift_item:avb.bin.SiftItem) -> "BinSiftMethod":
-		"""Lookup the sift method based on the method `int`"""
-		return cls(sift_item.method)
-	
-	@classmethod
-	def from_bin(cls, bin:avb.bin.Bin) -> list["BinSiftMethod"]:
-		# NOTE: Does this make sense to do?
-		return [cls.from_sift_item(item) for item in bin.sifted_settings]
-
-
-
 def show_bin_info(bin:avb.bin.Bin):
 	"""Print info from an `avb.bin.Bin`"""
 
@@ -46,16 +9,16 @@ def show_bin_info(bin:avb.bin.Bin):
 	
 	print("\n-------\n")
 	
-	print("Display Mode:", avbutils.BinDisplayModes.get_mode_from_bin(bin).name)
-	print("Display Mask:", avbutils.BinDisplayOptions.get_options_from_bin(bin).name)
-	print(f"Mac font:     {bin.mac_font=} {bin.mac_font_size=}")
-	print(f"Colors (16b?):{bin.background_color=} {bin.forground_color=}")
-	print(f"Image Scale:  Frame Mode Size (4-14): {bin.mac_image_scale=} Script Mode Size (3-8): {bin.ql_image_scale=}")
+	#print("Display Mode:", avbutils.BinDisplayModes.get_mode_from_bin(bin).name)
+	#print("Display Mask:", avbutils.BinDisplayOptions.get_options_from_bin(bin).name)
+	#print(f"Mac font:     {bin.mac_font=} {bin.mac_font_size=}")
+	#print(f"Colors (16b?):{bin.background_color=} {bin.forground_color=}")
+	#print(f"Image Scale:  Frame Mode Size (4-14): {bin.mac_image_scale=} Script Mode Size (3-8): {bin.ql_image_scale=}")
 	print(f"Home rect:    (top-left, bottom-right) {bin.home_rect=}  ({bin.home_rect[3]-bin.home_rect[1]}x{bin.home_rect[2]-bin.home_rect[0]})")
 	
 	print("\n-------\n")
 	
-	print("Sort Columns:", [f"{c} ({BinSortDirection(d).name.title()})" for d,c in bin.sort_columns])
+	print("Sort Columns:", [f"{c} ({avbutils.BinSortDirection(d).name.title()})" for d,c in bin.sort_columns])
 
 	# Sifted items
 	# Listed in reverse order.
@@ -65,7 +28,7 @@ def show_bin_info(bin:avb.bin.Bin):
 	for idx, param in enumerate(bin.sifted_settings[::-1]):
 		if idx == 3:
 			print("Also...")
-		print(f" - Column \"{param.column}\" {BinSiftMethod.from_sift_item(param).name.replace('_',' ').lower()} the string \"{param.string}\"")
+		print(f" - Column \"{param.column}\" {avbutils.BinSiftMethod.from_sift_item(param).name.replace('_',' ').lower()} the string \"{param.string}\"")
 
 	print("\n-------\n")
 
