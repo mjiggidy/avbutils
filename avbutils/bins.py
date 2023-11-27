@@ -100,3 +100,35 @@ class BinSiftMethod(enum.IntEnum):
 	def from_bin(cls, bin:avb.bin.Bin) -> list["BinSiftMethod"]:
 		# NOTE: Does this make sense to do?
 		return [cls.from_sift_item(item) for item in bin.sifted_settings]
+	
+class BinColumnFormat(enum.IntEnum):
+	"""Display format of a bin column"""
+
+	ICON = 0
+	"""Graphical icon indicators"""
+
+	PERF = 1
+	# TODO: Unknown, belongs to "Perf" column at least
+
+	USER_TEXT = 2
+	"""User-editable text field"""
+
+	TIMECODE = 100
+	# TODO: Slip column appears to be integer
+
+	FRAME_COUNT = 101
+	# TODO: VFX Column appears to be formatted text
+
+	DATE_TIME = 102
+
+	FRAME_RATE = 103
+	# TODO: Alt: Decimal or fractional?
+
+	STRICT = 105
+	# TODO: Seems to be an option from one of several choices?
+
+	FRAME = 106
+	"""Thumbnail"""
+
+	CODEC_INFO = 109
+	# Perhaps references to other flavors?
