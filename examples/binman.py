@@ -113,6 +113,8 @@ class DisplayPropertiesPanel(QtWidgets.QWidget):
 		self.grp_position.layout().addRow("Size On Screen:", self.sizing_layout)
 
 		self.layout().addWidget(self.grp_position)
+
+		self.layout().addStretch()
 		
 		
 		#for idx, font in enumerate(QtGui.QFontDatabase.families()):
@@ -198,7 +200,7 @@ class BinViewPanel(QtWidgets.QWidget):
 		self.tree_columns.setIndentation(0)
 		self.tree_columns.resizeColumnToContents(0)
 		self.tree_columns.setSortingEnabled(True)
-		self.tree_columns.setSelectionMode(QtWidgets.QTreeWidget.SelectionMode.MultiSelection)
+		self.tree_columns.setSelectionMode(QtWidgets.QTreeWidget.SelectionMode.ExtendedSelection)
 		self.tree_columns.sortByColumn(0, QtCore.Qt.SortOrder.AscendingOrder)
 		
 		self.layout().addWidget(self.tree_columns)
@@ -228,9 +230,14 @@ class BinmanMain(QtWidgets.QWidget):
 	def __init__(self):
 		super().__init__()
 
-		self.setLayout(QtWidgets.QVBoxLayout())
+		self.setLayout(QtWidgets.QHBoxLayout())
+
+		self.binpreview = BinPreviewTree()
+		self.binpreview.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.MinimumExpanding))
+		self.layout().addWidget(self.binpreview)
 
 		self.tabs = QtWidgets.QTabWidget()
+		self.tabs.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.MinimumExpanding))
 		
 
 		self.panel_displayproperties = DisplayPropertiesPanel()
@@ -269,6 +276,19 @@ class BinmanMain(QtWidgets.QWidget):
 			self.panel_binview.set_bin_columns_list(
 				[[str(idx+1), col.get("title"),avbutils.BinColumnFormat(col.get("format")).name.replace("_"," ").title(), str(col.get("type")), str(int(col.get("hidden")))] for idx, col in enumerate(bin.view_setting.columns)]
 			)
+
+			self.binpreview.setHeaderLabels(["Name", "Hidden?"])
+			self.binpreview.setAlternatingRowColors(True)
+			self.binpreview.setSortingEnabled(True)
+			self.binpreview.clear()
+			self.binpreview.addTopLevelItems(
+				[BinViewItem([str(x.mob.name), str(not x.user_placed)]) for x in bin.items]
+			)
+
+			for item in self.binpreview.findItems("True", QtCore.Qt.MatchFlag.MatchExactly, column=1):
+				item.setHidden(True)
+
+			self.binpreview.resizeColumnToContents(0)
 	
 	@QtCore.Slot()
 	def load_bin(self, bin_path:QtCore.QFileInfo):
@@ -278,6 +298,9 @@ class BinmanMain(QtWidgets.QWidget):
 			wnd_main.setWindowTitle(bin_path.fileName())
 			self.new_bin_loaded(bin)
 
+
+class BinPreviewTree(QtWidgets.QTreeWidget):
+	"""The bin preview"""
 
 
 class BinmanMenuBar(QtWidgets.QMenuBar):
