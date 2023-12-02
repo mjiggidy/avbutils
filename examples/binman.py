@@ -156,7 +156,7 @@ class DisplayPropertiesPanel(QtWidgets.QWidget):
 		self.thumb_size_script_slider.setValue(size)
 	
 	def set_font_family_index(self, index:int):
-		print(index, " + ", FONT_INDEX_OFFSET)
+		#print(index, " + ", FONT_INDEX_OFFSET)
 		self.font_list.setCurrentIndex(index - FONT_INDEX_OFFSET)
 
 	def set_font_size(self, size:int):
@@ -226,8 +226,13 @@ class BinViewItem(QtWidgets.QTreeWidgetItem):
 	@classmethod
 	def get_column_data(cls, mob:avb.misc.MobRef):
 
+		try:
+			mastermob = avbutils.matchback_to_masterclip(mob)
+			sourcemob = avbutils.matchback_to_sourcemob(mastermob)
+		except Exception as e:
+			return [mob.name, str(mob), f"Skipping {mob}: {e}"]
 		
-		return [mob.name, str(mob.class_id.decode("utf-8")), str(mob)]
+		return [mob.name, str(mastermob), str(mob == mastermob)]
 
 
 
