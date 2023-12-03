@@ -224,7 +224,9 @@ class BinViewItem(QtWidgets.QTreeWidgetItem):
 		return avbutils.human_sort(self.text(sort_column)) < avbutils.human_sort(other.text(sort_column))
 	
 	@classmethod
-	def get_column_data(cls, mob:avb.misc.MobRef):
+	def get_column_data(cls, mob:avb.misc.MobRef, headers=None):
+
+		headers = headers or []
 
 		try:
 			mastermob = avbutils.matchback_to_masterclip(mob)
@@ -232,7 +234,22 @@ class BinViewItem(QtWidgets.QTreeWidgetItem):
 		except Exception as e:
 			return [mob.name, str(mob), f"Skipping {mob}: {e}"]
 		
-		return [mob.name, str(mastermob), str(mob == mastermob)]
+		print(mastermob.attributes)
+		
+		data = []
+		for header in headers:
+			if header in mob.attributes:
+				data.append(mob.attributes.get(header))
+			elif "_USER" in mob.attributes.get("_USER"):
+				data.append(mob.attributes.get("_USER").get(header))
+			elif header in mastermob.attributes:
+				data.append(mastermob.attributes.get(header))
+			elif "_USER" in mastermob.attributes:
+				data.append(mastermob.attributes.get("_USER").get(header, "???"))
+			else:
+				data.append("No attributes atom")
+
+		return data
 
 
 
@@ -294,9 +311,10 @@ class BinmanMain(QtWidgets.QWidget):
 
 			self.binpreview.clear()
 			self.binpreview.setHeaderLabels(col.get("title") for col in bin.view_setting.columns)
+			[self.binpreview.setColumnHidden(idx, col.get("hidden")) for idx, col in enumerate(bin.view_setting.columns)]
 			self.binpreview.addTopLevelItems(
 				#[BinViewItem(BinViewItem.get_column_data(x.mob)) for x in bin.items if x.user_placed and x.mob in bin.compositionmobs()]
-				[BinViewItem(BinViewItem.get_column_data(x)) for x in bin.mobs]
+				[BinViewItem(BinViewItem.get_column_data(x.mob, headers=[col.get("title") for col in bin.view_setting.columns])) for x in bin.items if x.user_placed]
 			)
 
 			for item in self.binpreview.findItems("True", QtCore.Qt.MatchFlag.MatchExactly, column=1):
