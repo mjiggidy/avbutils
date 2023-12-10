@@ -250,6 +250,33 @@ class BinViewItem(QtWidgets.QTreeWidgetItem):
 				data.append("No attributes atom")
 
 		return data
+	
+class FrameView(QtWidgets.QWidget):
+
+	def __init__(self):
+
+		super().__init__()
+
+		self.scene = QtWidgets.QGraphicsScene()
+
+		self.setLayout(QtWidgets.QVBoxLayout())
+
+		self.frameview = QtWidgets.QGraphicsView(self.scene)
+		self.layout().addWidget(self.frameview)
+	
+	def set_items(self, items:list[avb.bin.BinItem]):
+		"""Set the items in the frame view"""
+
+		self.scene.clear()
+
+		for item in (x for x in items if x.user_placed):
+			icon = self.scene.addRect(item.x, item.y, 16*3, 9*3)
+			#print("Add", item.x, item.y)
+			icon.setFlags(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+		
+		self.frameview.show()
+
+
 
 
 
@@ -261,9 +288,16 @@ class BinmanMain(QtWidgets.QWidget):
 
 		self.setLayout(QtWidgets.QHBoxLayout())
 
+		self.tabs_binpreview = QtWidgets.QTabWidget()
+
 		self.binpreview = BinPreviewTree()
 		self.binpreview.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.MinimumExpanding))
-		self.layout().addWidget(self.binpreview)
+		self.tabs_binpreview.addTab(self.binpreview, "List View")
+
+		self.frameview = FrameView()
+		self.tabs_binpreview.addTab(self.frameview, "Frame View")
+
+		self.layout().addWidget(self.tabs_binpreview)
 
 		self.tabs = QtWidgets.QTabWidget()
 		self.tabs.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.MinimumExpanding))
@@ -321,6 +355,8 @@ class BinmanMain(QtWidgets.QWidget):
 				item.setHidden(True)
 
 			self.binpreview.resizeColumnToContents(0)
+
+			self.frameview.set_items(bin.items)
 	
 	@QtCore.Slot()
 	def load_bin(self, bin_path:QtCore.QFileInfo):
