@@ -3,6 +3,22 @@ import avb
 
 # TODO: Maybe .sorting.BinSorting goes here? Probably.
 
+# Thumbnail grid is 278x174 at largest scale  (vs 224x126 thumbnail)
+#                   68 x 74 at smallest scale (vs 64x36 thumbnail)
+
+THUMB_FRAME_MODE_RANGE  = range(4, 14) # Multiplier of 16x9
+"""Size multiplier for thumbnails in Frame Mode"""
+
+THUMB_SCRIPT_MODE_RANGE = range(3, 8) # Multiplier of 16x9
+"""Size multiplier for thumbnails in Script Mode"""
+
+THUMB_UNIT_SIZE = (16, 9)
+"""Width and height of a thumbnail, to be multiplied by a scalar in `THUMB_FRAME_MODE_RANGE` or `THUMB_SCRIPT_MODE_RANGE`"""
+
+FONT_SIZE_RANGE = range(8,100)
+FONT_INDEX_OFFSET = 142+12+7
+""" wat """
+
 class BinDisplayModes(enum.IntEnum):
 	"""Avid Bin View Modes"""
 
