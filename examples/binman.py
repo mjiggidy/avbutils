@@ -4,13 +4,6 @@ import sys, pathlib
 import avb, avbutils
 from PySide6 import QtWidgets, QtCore, QtGui
 
-THUMB_FRAME_MODE_RATE  = range(4, 14)
-THUMB_SCRIPT_MODE_RATE = range(3, 8)
-
-FONT_INDEX_OFFSET = 142+12+7
-""" wat """
-
-FONT_SIZE_RANGE = range(8,100)
 
 class BinmanApp(QtWidgets.QApplication):
 	"""Binman"""
@@ -45,10 +38,10 @@ class DisplayPropertiesPanel(QtWidgets.QWidget):
 		self.grp_display_modes.layout().addRow("Display Mode:", self.display_modes_layout)
 
 
-		self.thumb_size_frame_slider = QtWidgets.QSlider(minimum=THUMB_FRAME_MODE_RATE.start, maximum=THUMB_FRAME_MODE_RATE.stop, orientation=QtCore.Qt.Orientation.Horizontal)
+		self.thumb_size_frame_slider = QtWidgets.QSlider(minimum=avbutils.THUMB_FRAME_MODE_RANGE.start, maximum=avbutils.THUMB_FRAME_MODE_RANGE.stop, orientation=QtCore.Qt.Orientation.Horizontal)
 		self.grp_display_modes.layout().addRow("Thumbnail Size (Frame Mode):", self.thumb_size_frame_slider)
 
-		self.thumb_size_script_slider = QtWidgets.QSlider(minimum=THUMB_SCRIPT_MODE_RATE.start, maximum=THUMB_SCRIPT_MODE_RATE.stop, orientation=QtCore.Qt.Orientation.Horizontal)
+		self.thumb_size_script_slider = QtWidgets.QSlider(minimum=avbutils.THUMB_SCRIPT_MODE_RANGE.start, maximum=avbutils.THUMB_SCRIPT_MODE_RANGE.stop, orientation=QtCore.Qt.Orientation.Horizontal)
 		self.grp_display_modes.layout().addRow("Thumbnail Size (Script Mode):", self.thumb_size_script_slider)
 
 		self.layout().addWidget(self.grp_display_modes)
@@ -61,7 +54,7 @@ class DisplayPropertiesPanel(QtWidgets.QWidget):
 		self.font_list = QtWidgets.QComboBox()
 		self.font_list.addItems(QtGui.QFontDatabase.families())
 
-		self.font_size = QtWidgets.QSpinBox(minimum=FONT_SIZE_RANGE.start, maximum=FONT_SIZE_RANGE.stop)
+		self.font_size = QtWidgets.QSpinBox(minimum=avbutils.FONT_SIZE_RANGE.start, maximum=avbutils.FONT_SIZE_RANGE.stop)
 
 		self.font_layout.addWidget(self.font_list)
 		self.font_layout.addWidget(self.font_size)
@@ -157,7 +150,7 @@ class DisplayPropertiesPanel(QtWidgets.QWidget):
 	
 	def set_font_family_index(self, index:int):
 		#print(index, " + ", FONT_INDEX_OFFSET)
-		self.font_list.setCurrentIndex(index - FONT_INDEX_OFFSET)
+		self.font_list.setCurrentIndex(index - avbutils.FONT_INDEX_OFFSET)
 
 	def set_font_size(self, size:int):
 		self.font_size.setValue(size)
