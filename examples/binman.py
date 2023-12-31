@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, pathlib
+import sys, typing, pathlib
 import avb, avbutils
 from PySide6 import QtWidgets, QtCore, QtGui
 
@@ -17,6 +17,8 @@ class BinmanApp(QtWidgets.QApplication):
 
 class DisplayPropertiesPanel(QtWidgets.QWidget):
 	"""Bin display properties"""
+
+	thumb_size_frame_changed = QtCore.Signal(int)
 
 	def __init__(self):
 		super().__init__()
@@ -39,6 +41,7 @@ class DisplayPropertiesPanel(QtWidgets.QWidget):
 
 
 		self.thumb_size_frame_slider = QtWidgets.QSlider(minimum=avbutils.THUMB_FRAME_MODE_RANGE.start, maximum=avbutils.THUMB_FRAME_MODE_RANGE.stop, orientation=QtCore.Qt.Orientation.Horizontal)
+		self.thumb_size_frame_slider.valueChanged.connect(self.thumb_size_frame_changed)
 		self.grp_display_modes.layout().addRow("Thumbnail Size (Frame Mode):", self.thumb_size_frame_slider)
 
 		self.thumb_size_script_slider = QtWidgets.QSlider(minimum=avbutils.THUMB_SCRIPT_MODE_RANGE.start, maximum=avbutils.THUMB_SCRIPT_MODE_RANGE.stop, orientation=QtCore.Qt.Orientation.Horizontal)
@@ -246,16 +249,21 @@ class BinViewItem(QtWidgets.QTreeWidgetItem):
 	
 class FrameView(QtWidgets.QWidget):
 
-	def __init__(self):
+	def __init__(self, scale:typing.Optional[int]=avbutils.THUMB_FRAME_MODE_RANGE.start):
 
 		super().__init__()
 
 		self.scene = QtWidgets.QGraphicsScene()
+		self.scale = 1
 
 		self.setLayout(QtWidgets.QVBoxLayout())
 
 		self.frameview = QtWidgets.QGraphicsView(self.scene)
 		self.layout().addWidget(self.frameview)
+
+		self.brush_bg = QtGui.QBrush()
+		self.brush_bg.setStyle(QtCore.Qt.BrushStyle.CrossPattern)
+		self.frameview.setBackgroundBrush(self.brush_bg )
 	
 	def set_items(self, items:list[avb.bin.BinItem]):
 		"""Set the items in the frame view"""
@@ -263,11 +271,22 @@ class FrameView(QtWidgets.QWidget):
 		self.scene.clear()
 
 		for item in (x for x in items if x.user_placed):
-			icon = self.scene.addRect(item.x, item.y, 16*3, 9*3)
+			icon = self.scene.addRect(item.x, item.y, avbutils.THUMB_UNIT_SIZE[0], avbutils.THUMB_UNIT_SIZE[1])
 			#print("Add", item.x, item.y)
 			icon.setFlags(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
 		
+		self.set_view_scale(self.scale)
 		self.frameview.show()
+
+	def set_view_scale(self, scale:int):
+		
+		scale_factor = scale / self.scale
+		self.frameview.scale(scale_factor, scale_factor)
+		self.scale = scale
+		self.frameview.show()
+		#for item in self.scene.items():
+		#	item.setRect(item.scenePos().x(), item.scenePos().y(), avbutils.THUMB_UNIT_SIZE[0] * scale, avbutils.THUMB_UNIT_SIZE[1] * scale)
+
 
 
 
@@ -301,6 +320,7 @@ class BinmanMain(QtWidgets.QWidget):
 		self.panel_displayproperties.set_thumb_frame_size(80)
 		self.panel_displayproperties.set_thumb_script_size(80)
 
+
 		self.panel_binview = BinViewPanel()
 
 		self.tabs.addTab(self.panel_displayproperties, "Appearance")
@@ -310,6 +330,8 @@ class BinmanMain(QtWidgets.QWidget):
 		self.tabs.addTab(QtWidgets.QWidget(), "Automation")
 
 		self.layout().addWidget(self.tabs)
+		
+		self.panel_displayproperties.thumb_size_frame_changed.connect(self.frameview.set_view_scale)
 	
 	@QtCore.Slot()
 	def new_bin_loaded(self, bin:avb.bin.Bin):
@@ -350,6 +372,8 @@ class BinmanMain(QtWidgets.QWidget):
 			self.binpreview.resizeColumnToContents(0)
 
 			self.frameview.set_items(bin.items)
+			self.frameview.set_view_scale(bin.mac_image_scale)
+			print("Scaling to", bin.mac_image_scale)
 	
 	@QtCore.Slot()
 	def load_bin(self, bin_path:QtCore.QFileInfo):
