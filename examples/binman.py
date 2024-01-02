@@ -325,8 +325,12 @@ class FrameView(QtWidgets.QWidget):
 	def set_view_scale(self, scale:int):
 		
 		self.frameview.grid_scale = scale
+
+		#for item in self.scene.items():
+		#	item.setScale(scale/self.scale)
+
 		self.scale = scale
-		self.frameview.update()
+		self.scene.update()
 		#for item in self.scene.items():
 		#	item.setRect(item.scenePos().x(), item.scenePos().y(), avbutils.THUMB_UNIT_SIZE[0] * scale, avbutils.THUMB_UNIT_SIZE[1] * scale)
 
