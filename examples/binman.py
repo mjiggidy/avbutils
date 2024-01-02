@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-import sys, typing, pathlib
-from typing import Union
-from PySide6.QtCore import QRect, QRectF
-from PySide6.QtGui import QPainter
+import sys, typing, math
 import avb, avbutils
 from PySide6 import QtWidgets, QtCore, QtGui
 
@@ -256,35 +253,38 @@ class FrameViewGraph(QtWidgets.QGraphicsView):
 	def __init__(self, *args, **kwargs):
 
 		super().__init__(*args, **kwargs)
+
+		self.grid_scale = avbutils.THUMB_FRAME_MODE_RANGE.stop
 	
 	def drawBackground(self, painter: QtGui.QPainter, rect: QtCore.QRectF | QtCore.QRect) -> None:
 
-		x_unit_size = avbutils.THUMB_UNIT_SIZE[0] * avbutils.THUMB_FRAME_MODE_RANGE.start
-		y_unit_size = avbutils.THUMB_UNIT_SIZE[1] * avbutils.THUMB_FRAME_MODE_RANGE.start
+		x_unit_size = avbutils.THUMB_UNIT_SIZE[0] * self.grid_scale
+		y_unit_size = avbutils.THUMB_UNIT_SIZE[1] * self.grid_scale
+
+		x_segments = 3
+		y_segments = 3
 
 		pen_solid = QtGui.QPen(QtCore.Qt.PenStyle.SolidLine)
 		pen_dashed = QtGui.QPen(QtCore.Qt.PenStyle.DashLine)
 
 		# math.floor(rect.left() / x_unit_size) * x_unit_size
 
-		x_range = range(int(rect.left()), int(rect.right()))
-		y_range = range(int(rect.top()), int(rect.bottom()))
+		x_range = range(int(math.floor(rect.left() / x_unit_size) * x_unit_size), int(rect.right()), int(x_unit_size/x_segments))
+		y_range = range(int(math.floor(rect.top() / y_unit_size) * y_unit_size), int(rect.bottom()), int(y_unit_size/y_segments))
 		
-		for col in x_range:
-			if col % round(x_unit_size/3) == 0:
-				if col % x_unit_size == 0:
-					painter.setPen(pen_solid)
-				else:
-					painter.setPen(pen_dashed)
-				painter.drawLine(QtCore.QLine(col, y_range.start, col, y_range.stop))
-
-		for row in y_range:
-			if row % y_unit_size == 0:
+		for seg_idx, col in enumerate(x_range):
+			if seg_idx % x_segments == 0:
 				painter.setPen(pen_solid)
-				painter.drawLine(QtCore.QLine(x_range.start, row, x_range.stop, row))
-			elif row % round(y_unit_size/3) == 0:
+			else:
 				painter.setPen(pen_dashed)
-				painter.drawLine(QtCore.QLine(x_range.start, row, x_range.stop, row))
+			painter.drawLine(QtCore.QLine(col, y_range.start, col, y_range.stop))
+
+		for seg_idx, row in enumerate(y_range):
+			if seg_idx % y_segments == 0:
+				painter.setPen(pen_solid)
+			else:
+				painter.setPen(pen_dashed)
+			painter.drawLine(QtCore.QLine(x_range.start, row, x_range.stop, row))
 
 		
 
@@ -324,10 +324,9 @@ class FrameView(QtWidgets.QWidget):
 
 	def set_view_scale(self, scale:int):
 		
-		scale_factor = scale / self.scale
-		self.frameview.scale(scale_factor, scale_factor)
+		self.frameview.grid_scale = scale
 		self.scale = scale
-		self.frameview.show()
+		self.frameview.update()
 		#for item in self.scene.items():
 		#	item.setRect(item.scenePos().x(), item.scenePos().y(), avbutils.THUMB_UNIT_SIZE[0] * scale, avbutils.THUMB_UNIT_SIZE[1] * scale)
 
