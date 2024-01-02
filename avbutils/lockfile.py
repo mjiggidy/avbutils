@@ -11,4 +11,7 @@ def get_lockfile_for_bin(bin_path:pathlib.Path) -> str|None:
 	
 	with lock_path.open(encoding="utf-16le") as lock_handle:
 		# TODO: Make a Lock Handle info struct thing
-		return str(lock_handle.read())
+		try:
+			return str(lock_handle.read())
+		except UnicodeDecodeError as e:
+			return "Unknown"
