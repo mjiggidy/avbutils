@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import sys, typing, pathlib
+from typing import Union
+from PySide6.QtCore import QRect, QRectF
+from PySide6.QtGui import QPainter
 import avb, avbutils
 from PySide6 import QtWidgets, QtCore, QtGui
 
@@ -247,6 +250,47 @@ class BinViewItem(QtWidgets.QTreeWidgetItem):
 
 		return data
 	
+
+class FrameViewGraph(QtWidgets.QGraphicsView):
+
+	def __init__(self, *args, **kwargs):
+
+		super().__init__(*args, **kwargs)
+	
+	def drawBackground(self, painter: QtGui.QPainter, rect: QtCore.QRectF | QtCore.QRect) -> None:
+
+		x_unit_size = avbutils.THUMB_UNIT_SIZE[0] * avbutils.THUMB_FRAME_MODE_RANGE.start
+		y_unit_size = avbutils.THUMB_UNIT_SIZE[1] * avbutils.THUMB_FRAME_MODE_RANGE.start
+
+		pen_solid = QtGui.QPen(QtCore.Qt.PenStyle.SolidLine)
+		pen_dashed = QtGui.QPen(QtCore.Qt.PenStyle.DashLine)
+
+		# math.floor(rect.left() / x_unit_size) * x_unit_size
+
+		x_range = range(int(rect.left()), int(rect.right()))
+		y_range = range(int(rect.top()), int(rect.bottom()))
+		
+		for col in x_range:
+			if col % round(x_unit_size/3) == 0:
+				if col % x_unit_size == 0:
+					painter.setPen(pen_solid)
+				else:
+					painter.setPen(pen_dashed)
+				painter.drawLine(QtCore.QLine(col, y_range.start, col, y_range.stop))
+
+		for row in y_range:
+			if row % y_unit_size == 0:
+				painter.setPen(pen_solid)
+				painter.drawLine(QtCore.QLine(x_range.start, row, x_range.stop, row))
+			elif row % round(y_unit_size/3) == 0:
+				painter.setPen(pen_dashed)
+				painter.drawLine(QtCore.QLine(x_range.start, row, x_range.stop, row))
+
+		
+
+		
+		#return super().drawBackground(painter, rect)
+
 class FrameView(QtWidgets.QWidget):
 
 	def __init__(self, scale:typing.Optional[int]=avbutils.THUMB_FRAME_MODE_RANGE.start):
@@ -258,7 +302,7 @@ class FrameView(QtWidgets.QWidget):
 
 		self.setLayout(QtWidgets.QVBoxLayout())
 
-		self.frameview = QtWidgets.QGraphicsView(self.scene)
+		self.frameview = FrameViewGraph(self.scene)
 		self.layout().addWidget(self.frameview)
 
 		self.brush_bg = QtGui.QBrush()
