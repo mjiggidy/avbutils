@@ -315,7 +315,7 @@ class FrameView(QtWidgets.QWidget):
 		self.scene.clear()
 
 		for item in (x for x in items if x.user_placed):
-			icon = self.scene.addRect(item.x, item.y, avbutils.THUMB_UNIT_SIZE[0], avbutils.THUMB_UNIT_SIZE[1])
+			icon = self.scene.addRect(item.x, item.y, avbutils.THUMB_UNIT_SIZE[0] * self.scale, avbutils.THUMB_UNIT_SIZE[1] * self.scale)
 			#print("Add", item.x, item.y)
 			icon.setFlags(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
 		
@@ -323,12 +323,17 @@ class FrameView(QtWidgets.QWidget):
 		self.frameview.show()
 
 	def set_view_scale(self, scale:int):
+
+		for item in self.scene.items():
+			if isinstance(item, QtWidgets.QGraphicsRectItem):
+				item.prepareGeometryChange()
+				new_rect = QtCore.QRectF(item.rect())
+				new_rect.setWidth(avbutils.THUMB_UNIT_SIZE[0] * scale)
+				new_rect.setHeight(avbutils.THUMB_UNIT_SIZE[1] * scale)
+				item.setRect(new_rect)
+				#print(item.rect())
 		
 		self.frameview.grid_scale = scale
-
-		#for item in self.scene.items():
-		#	item.setScale(scale/self.scale)
-
 		self.scale = scale
 		self.scene.update()
 		#for item in self.scene.items():
