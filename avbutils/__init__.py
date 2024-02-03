@@ -5,3 +5,4 @@ from .sorting import *
 from .matchback import *
 from .lockfile import *
 from .timeline import *
+from .compositions import *

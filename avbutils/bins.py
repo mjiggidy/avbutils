@@ -44,6 +44,8 @@ class BinDisplayOptions(enum.IntFlag):
 	# NOTE: Once flags have been set, they can be retrieved individually
 	# by calling the instance's `IntFlag.flag_members()` or converting the instance to a list
 
+	# NOTE: Marry these to `.compositions.MobUsage`?
+
 	MASTER_CLIPS               = 0b00000000000000001
 	"""Show Master Clips"""
 	SUBCLIPS                   = 0b00000000000000010
@@ -128,6 +130,8 @@ class BinColumnFormat(enum.IntEnum):
 
 	USER_TEXT = 2
 	"""User-editable text field"""
+
+	WHAT = 20
 
 	TIMECODE = 100
 	# TODO: Slip column appears to be integer
