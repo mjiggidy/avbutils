@@ -29,6 +29,9 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 			brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
 			painter.drawRect(color_box)
 			return
+		
+class BinModelItem(QtCore.QObject):
+	"""Bin items as objects provided by `BinModel`"""
 
 
 class BinModel(QtCore.QAbstractItemModel):
@@ -105,11 +108,10 @@ class BinModel(QtCore.QAbstractItemModel):
 				if header_data.get("title") in mob.attributes["PreservedBinData"]:
 					return mob.attributes["PreservedBinData"][header_data.get("title")]
 				elif f"_COLUMN_{header_data.get('title').upper().replace(' ','_')}" in  mob.attributes["PreservedBinData"]:
-					col = mob.attributes["PreservedBinData"][f"_COLUMN_{header_data.get('title').upper().replace(' ','_')}"].decode("utf-8")
-					print(f"_COLUMN_{header_data.get('title').upper().replace(' ','_')} IS ", str(col) )
+					col = mob.attributes["PreservedBinData"][f"_COLUMN_{header_data.get('title').upper().replace(' ','_')}"].decode("latin-1")
 					return col
 				else:
-					print(f"_COLUMN_{header_data.get('title').upper().replace(' ','_')}")
+					pass
 		
 		elif role == QtCore.Qt.ItemDataRole.UserRole:
 			return mob
@@ -126,6 +128,9 @@ class BinModel(QtCore.QAbstractItemModel):
 			return self._header_cache[section]
 
 def show_details(selected:QtCore.QItemSelection, deselected:QtCore.QItemSelection):
+
+	global txt
+
 	try:
 		idx = selected.data().indexes()[0]
 	except:
@@ -135,30 +140,42 @@ def show_details(selected:QtCore.QItemSelection, deselected:QtCore.QItemSelectio
 	mob = idx.model().data(idx, QtCore.Qt.ItemDataRole.UserRole)
 	#pprint.pprint(mob.attributes)
 
-	pprint.pprint(mob.attributes)
+	txt.setPlainText(pprint.pformat(mob.attributes))
 	
 
 
 if __name__ == "__main__":
 
 	app = QtWidgets.QApplication()
-	wdg = QtWidgets.QTreeView()
-	wdg.setAlternatingRowColors(True)
-	wdg.setIndentation(0)
+
+	wnd = QtWidgets.QSplitter()
+
+	tree = QtWidgets.QTreeView()
+	tree.setAlternatingRowColors(True)
+	tree.setIndentation(0)
+
+	txt = QtWidgets.QPlainTextEdit()
+	txt.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.NoWrap)
+	txt.setEnabled(False)
 
 	with avb.open(sys.argv[1]) as file_bin:
-		wdg.setWindowTitle(sys.argv[1])
+		tree.setWindowTitle(sys.argv[1])
 
 		prx = QtCore.QSortFilterProxyModel()
 		prx.setSourceModel(BinModel(file_bin.content))
-		wdg.setModel(prx)
+		tree.setModel(prx)
 
-		wdg.selectionModel().selectionChanged.connect(show_details)
-		wdg.setItemDelegateForColumn(0, BinItemDisplayDelegate())
-		wdg.setSortingEnabled(True)
+		tree.selectionModel().selectionChanged.connect(show_details)
+		tree.setItemDelegateForColumn(0, BinItemDisplayDelegate())
+		tree.setSortingEnabled(True)
 
-		for col in range(wdg.model().columnCount()):
-			header_data = wdg.model().headerData(col, QtCore.Qt.Orientation.Horizontal, role=QtCore.Qt.UserRole)
-			wdg.setColumnHidden(col, header_data.get("hidden", False))
-		wdg.show()
+		for col in range(tree.model().columnCount()):
+			header_data = tree.model().headerData(col, QtCore.Qt.Orientation.Horizontal, role=QtCore.Qt.UserRole)
+			tree.setColumnHidden(col, header_data.get("hidden", False))
+	
+		wnd.addWidget(tree)
+		wnd.addWidget(txt)
+		
+
+		wnd.show()
 		app.exec()
