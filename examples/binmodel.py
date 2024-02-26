@@ -6,6 +6,7 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 
 	max_8b = (1 << 8) - 1
 	max_16b = (1 << 16) - 1
+	padding_px = 5 # Pixels padding
 
 	def paint(self, painter:QtGui.QPainter, option:QtWidgets.QStyleOptionViewItem, index:QtCore.QModelIndex|QtCore.QPersistentModelIndex) -> None:
 
@@ -16,7 +17,9 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 		if avbutils.composition_clip_color(mob) is not None:
 			
 			clip_color = QtGui.QColor(*(c/self.max_16b * self.max_8b for c in avbutils.composition_clip_color(mob)))
-			color_box = QtCore.QRect((option.rect.width()/2) - (option.rect.height()*(16/9)/2), option.rect.top(), option.rect.height()*(16/9), option.rect.height())
+			
+			color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
+			color_box.moveCenter(option.rect.center())
 
 
 			
@@ -32,6 +35,27 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 		
 class BinModelItem(QtCore.QObject):
 	"""Bin items as objects provided by `BinModel`"""
+
+	def __init__(self, bin_item:avb.bin.BinItem, *args, **kwargs):
+		"""Create a bin model item for a given pyavb BinItem"""
+
+		super().__init__(*args, **kwargs)
+
+		self._item = bin_item
+		self._mob  = bin_item.mob
+		self._attributes = bin_item.mob.attributes
+	
+	@property
+	def item(self) -> avb.bin.BinItem:
+		return self._item
+	
+	@property
+	def mob(self) -> avb.trackgroups.Composition:
+		return self._mob
+	
+	@property
+	def attributes(self) -> avb.attributes.Attributes:
+		return self._attributes
 
 
 class BinModel(QtCore.QAbstractItemModel):
@@ -49,7 +73,7 @@ class BinModel(QtCore.QAbstractItemModel):
 	
 	def _update_cache(self):
 		"""Update the item cache"""
-		self._item_cache = [x for x in self._bin.items]
+		self._item_cache = [BinModelItem(x) for x in self._bin.items]
 		
 		for header in self._bin.view_setting.columns:
 			self._header_cache.append({x:y for x,y in header.items()})
@@ -99,6 +123,16 @@ class BinModel(QtCore.QAbstractItemModel):
 			header_data = self.headerData(index.column(),QtCore.Qt.Orientation.Horizontal, QtCore.Qt.ItemDataRole.UserRole)
 			if header_data.get("type") == 4:
 				return str(timecode.Timecode(mob.length)).lstrip("00:")
+			elif header_data.get("type") == 3:
+				try:
+					return str(avbutils.get_timecode_range_for_composition(mob).end)
+				except:
+					return "-"
+			elif header_data.get("type") == 2:
+				try:
+					return str(avbutils.get_timecode_range_for_composition(mob).start)
+				except:
+					return "-"
 			elif header_data.get("type") == 201:
 				return f"{mob.name} [{avbutils.MobTypes.from_composition(mob)} / {avbutils.MobUsage.from_composition(mob)}]"
 			elif header_data.get("type") in range(40,50):
