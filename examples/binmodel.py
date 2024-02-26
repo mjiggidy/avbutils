@@ -2,6 +2,33 @@ import typing, sys, pprint
 import avb, avbutils, timecode
 from PySide6 import QtCore, QtWidgets, QtGui
 
+class FilterControls(QtWidgets.QGroupBox):
+
+	filters_changed = QtCore.Signal(bool, bool)
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		self._setup_widgets()
+	
+	def _setup_widgets(self):
+		self.setLayout(QtWidgets.QVBoxLayout())
+
+		self.chk_show_user_placed = QtWidgets.QCheckBox("Show User Placed")
+		self.chk_show_user_placed.setChecked(True)
+		self.chk_show_user_placed.stateChanged.connect(self.filter_changed)
+		self.chk_show_reference_clips = QtWidgets.QCheckBox("Show Reference Clips")
+		self.chk_show_reference_clips.setChecked(True)
+		self.chk_show_reference_clips.stateChanged.connect(self.filter_changed)
+
+		self.layout().addWidget(self.chk_show_user_placed)
+		self.layout().addWidget(self.chk_show_reference_clips)
+	
+	@QtCore.Slot()
+	def filter_changed(self):
+		self.filters_changed.emit(self.chk_show_user_placed.isChecked(), self.chk_show_reference_clips.isChecked())
+
+
 class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 
 	max_8b = (1 << 8) - 1
@@ -20,8 +47,6 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 			
 			color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
 			color_box.moveCenter(option.rect.center())
-
-
 			
 			brush = QtGui.QBrush()
 			brush.setColor(clip_color)
@@ -32,6 +57,32 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 			brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
 			painter.drawRect(color_box)
 			return
+
+class BinModelProxy(QtCore.QSortFilterProxyModel):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		self.show_user_placed = True
+		self.show_reference_clips = True
+
+	def filterAcceptsRow(self, source_row: int, source_parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex) -> bool:
+		list_item = self.sourceModel().index(source_row, 0, source_parent)
+		bin_item = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
+
+		if bin_item.is_user_placed:
+			return self.show_user_placed
+		else:
+			return self.show_reference_clips
+	
+	@QtCore.Slot()
+	def filters_changed(self, show_user_placed:bool, show_reference_clips:bool):
+
+		self.show_user_placed = show_user_placed
+		self.show_reference_clips = show_reference_clips
+		
+		self.invalidateFilter()
+
 		
 class BinModelItem(QtCore.QObject):
 	"""Bin items as objects provided by `BinModel`"""
@@ -44,6 +95,8 @@ class BinModelItem(QtCore.QObject):
 		self._item = bin_item
 		self._mob  = bin_item.mob
 		self._attributes = bin_item.mob.attributes
+
+		print(self.is_user_placed)
 	
 	@property
 	def item(self) -> avb.bin.BinItem:
@@ -56,6 +109,10 @@ class BinModelItem(QtCore.QObject):
 	@property
 	def attributes(self) -> avb.attributes.Attributes:
 		return self._attributes
+	
+	@property
+	def is_user_placed(self) -> bool:
+		return self._item.user_placed
 
 
 class BinModel(QtCore.QAbstractItemModel):
@@ -148,7 +205,7 @@ class BinModel(QtCore.QAbstractItemModel):
 					pass
 		
 		elif role == QtCore.Qt.ItemDataRole.UserRole:
-			return mob
+			return index.internalPointer()
 
 		return None
 		
@@ -182,7 +239,9 @@ if __name__ == "__main__":
 
 	app = QtWidgets.QApplication()
 
-	wnd = QtWidgets.QSplitter()
+	wnd_main = QtWidgets.QMainWindow()
+
+	splitter = QtWidgets.QSplitter()
 
 	tree = QtWidgets.QTreeView()
 	tree.setAlternatingRowColors(True)
@@ -192,12 +251,25 @@ if __name__ == "__main__":
 	txt.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.NoWrap)
 	txt.setEnabled(False)
 
-	with avb.open(sys.argv[1]) as file_bin:
-		tree.setWindowTitle(sys.argv[1])
+	filter_controls = FilterControls()
 
-		prx = QtCore.QSortFilterProxyModel()
+	sidebar = QtWidgets.QWidget()
+	sidebar.setLayout(QtWidgets.QVBoxLayout())
+
+	sidebar.layout().addWidget(txt)
+	sidebar.layout().addWidget(filter_controls)
+
+	splitter.addWidget(tree)
+	splitter.addWidget(sidebar)
+
+	with avb.open(sys.argv[1]) as file_bin:
+		wnd_main.setWindowFilePath(sys.argv[1])
+
+		prx = BinModelProxy()
 		prx.setSourceModel(BinModel(file_bin.content))
 		tree.setModel(prx)
+
+		filter_controls.filters_changed.connect(prx.filters_changed)
 
 		tree.selectionModel().selectionChanged.connect(show_details)
 		tree.setItemDelegateForColumn(0, BinItemDisplayDelegate())
@@ -206,10 +278,12 @@ if __name__ == "__main__":
 		for col in range(tree.model().columnCount()):
 			header_data = tree.model().headerData(col, QtCore.Qt.Orientation.Horizontal, role=QtCore.Qt.UserRole)
 			tree.setColumnHidden(col, header_data.get("hidden", False))
-	
-		wnd.addWidget(tree)
-		wnd.addWidget(txt)
+
 		
 
-		wnd.show()
+		wnd_main.setStatusBar(QtWidgets.QStatusBar())
+		wnd_main.setCentralWidget(splitter)
+
+		wnd_main.show()
+
 		app.exec()
