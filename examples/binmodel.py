@@ -41,23 +41,23 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 		
 		mob = index.data(role=QtCore.Qt.ItemDataRole.UserRole)
 
-		if avbutils.composition_clip_color(mob) is not None:
-			
-			clip_color = QtGui.QColor(*(c/self.max_16b * self.max_8b for c in avbutils.composition_clip_color(mob)))
-			
-			color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
-			color_box.moveCenter(option.rect.center())
-			
-			brush = QtGui.QBrush()
-			brush.setColor(clip_color)
-			brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
-
-			painter.fillRect(color_box, brush)
-			brush.setColor(QtGui.QColorConstants.Black)
-			brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
-			painter.drawRect(color_box)
+		if avbutils.composition_clip_color(mob) is None:
 			return
+		
+		clip_color = QtGui.QColor(*(c/self.max_16b * self.max_8b for c in avbutils.composition_clip_color(mob)))
+		
+		color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
+		color_box.moveCenter(option.rect.center())
+		
+		brush = QtGui.QBrush()
+		brush.setColor(clip_color)
+		brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
 
+		painter.fillRect(color_box, brush)
+		brush.setColor(QtGui.QColorConstants.Black)
+		brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
+		painter.drawRect(color_box)
+		
 class BinModelProxy(QtCore.QSortFilterProxyModel):
 
 	def __init__(self, *args, **kwargs):
@@ -232,12 +232,18 @@ def show_details(selected:QtCore.QItemSelection, deselected:QtCore.QItemSelectio
 	#pprint.pprint(mob.attributes)
 
 	txt.setPlainText(pprint.pformat(mob.attributes))
+
+def get_changes(prx_model:BinModelProxy, status_bar:QtWidgets.QStatusBar):
 	
+	num_visible = prx_model.rowCount()
+	num_total = prx_model.sourceModel().rowCount()
+	status_bar.showMessage(f"{num_visible} Visible | {num_total-num_visible} Hidden | {num_total} Total")
 
 
 if __name__ == "__main__":
 
 	app = QtWidgets.QApplication()
+	app.setApplicationName("Lil' Binboy")
 
 	wnd_main = QtWidgets.QMainWindow()
 
@@ -262,6 +268,11 @@ if __name__ == "__main__":
 	splitter.addWidget(tree)
 	splitter.addWidget(sidebar)
 
+	wnd_main.setStatusBar(QtWidgets.QStatusBar())
+	wnd_main.setCentralWidget(splitter)
+
+	wnd_main.show()
+
 	with avb.open(sys.argv[1]) as file_bin:
 		wnd_main.setWindowFilePath(sys.argv[1])
 
@@ -270,6 +281,8 @@ if __name__ == "__main__":
 		tree.setModel(prx)
 
 		filter_controls.filters_changed.connect(prx.filters_changed)
+		filter_controls.filters_changed.connect(lambda: get_changes(prx, wnd_main.statusBar()))
+
 
 		tree.selectionModel().selectionChanged.connect(show_details)
 		tree.setItemDelegateForColumn(0, BinItemDisplayDelegate())
@@ -281,9 +294,5 @@ if __name__ == "__main__":
 
 		
 
-		wnd_main.setStatusBar(QtWidgets.QStatusBar())
-		wnd_main.setCentralWidget(splitter)
-
-		wnd_main.show()
 
 		app.exec()
