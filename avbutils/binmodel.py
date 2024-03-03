@@ -67,6 +67,7 @@ class BinModelProxy(QtCore.QSortFilterProxyModel):
 		self.show_reference_clips = True
 
 	def filterAcceptsRow(self, source_row: int, source_parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex) -> bool:
+		
 		list_item = self.sourceModel().index(source_row, 0, source_parent)
 		bin_item = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
 
@@ -74,6 +75,12 @@ class BinModelProxy(QtCore.QSortFilterProxyModel):
 			return self.show_user_placed
 		else:
 			return self.show_reference_clips
+	
+	def filterAcceptsColumn(self, source_column: int, source_parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex) -> bool:
+		
+		header = self.sourceModel().headerData(source_column, orientation=QtCore.Qt.Orientation.Horizontal, role=QtCore.Qt.ItemDataRole.UserRole)
+		return not header["hidden"]
+
 	
 	@QtCore.Slot()
 	def filters_changed(self, show_user_placed:bool, show_reference_clips:bool):
@@ -118,23 +125,28 @@ class BinModelItem(QtCore.QObject):
 class BinModel(QtCore.QAbstractItemModel):
 	"""An Avid bin!"""
 
-	def __init__(self, bin:avb.bin.Bin, *args, **kwargs):
+	def __init__(self, bin:avb.bin.Bin|None=None, *args, **kwargs):
 
 		super().__init__(*args, **kwargs)
 
+		if bin is None:
+			bin = avb.file.AVBFile().content
+		
+		self.setBin(bin)
+	
+	def setBin(self, bin:avb.bin.Bin):
 		self._bin = bin
-		self._item_cache = []
-		self._header_cache = []
-
 		self._update_cache()
 	
 	def _update_cache(self):
 		"""Update the item cache"""
 		self._item_cache = [BinModelItem(x) for x in self._bin.items]
 		
+		self._header_cache = []
 		for header in self._bin.view_setting.columns:
 			self._header_cache.append({x:y for x,y in header.items()})
-		#self.dataChanged.emit()
+		
+		self.modelReset.emit()
 
 	def index(self, row:int, column:int, parent:typing.Optional[QtCore.QModelIndex]=None) -> QtCore.QModelIndex:
 		"""Returns the index of the item in the model specified by the given row, column and parent index."""
