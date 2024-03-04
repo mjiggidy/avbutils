@@ -86,6 +86,10 @@ class BinDisplayOptions(enum.IntFlag):
 		"""Return the `BinDisplayModes` value for a given bin"""
 		return cls(bin.display_mask)
 	
+	def __str__(self) -> str:
+		"""Show name with nicer formatting"""
+		return self.name.replace("_"," ").title()
+	
 class BinSortDirection(enum.IntEnum):
 	"""Direction the BinSortMethod will sort"""
 	
@@ -152,3 +156,7 @@ class BinColumnFormat(enum.IntEnum):
 
 	CODEC_INFO = 109
 	# Perhaps references to other flavors?
+
+	def __str__(self) -> str:
+		"""Show name with nicer formatting"""
+		return self.name.replace("_"," ").title()

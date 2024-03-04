@@ -38,25 +38,34 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 	def paint(self, painter:QtGui.QPainter, option:QtWidgets.QStyleOptionViewItem, index:QtCore.QModelIndex|QtCore.QPersistentModelIndex) -> None:
 
 		super().paint(painter, option, index)
-		
-		mob = index.data(role=QtCore.Qt.ItemDataRole.UserRole)
 
-		if avbutils.composition_clip_color(mob) is None:
-			return
+		header = index.model().headerData(index.column(), QtCore.Qt.Orientation.Horizontal, QtCore.Qt.ItemDataRole.UserRole)
 		
-		clip_color = QtGui.QColor(*(c/self.max_16b * self.max_8b for c in avbutils.composition_clip_color(mob)))
 		
-		color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
-		color_box.moveCenter(option.rect.center())
-		
-		brush = QtGui.QBrush()
-		brush.setColor(clip_color)
-		brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
+		if header["type"] == 51: #color
 
-		painter.fillRect(color_box, brush)
-		brush.setColor(QtGui.QColorConstants.Black)
-		brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
-		painter.drawRect(color_box)
+		
+			mob = index.data(role=QtCore.Qt.ItemDataRole.UserRole)
+
+			color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
+			color_box.moveCenter(option.rect.center())
+			brush = QtGui.QBrush()
+
+			clip_color_attr = avbutils.composition_clip_color(mob)
+			if clip_color_attr is not None:
+				clip_color = QtGui.QColor(*(c/self.max_16b * self.max_8b for c in clip_color_attr ))
+				brush.setColor(clip_color)
+				brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
+				painter.fillRect(color_box, brush)			
+
+			brush.setColor(QtGui.QColorConstants.Black)
+			brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
+			painter.drawRect(color_box)
+
+			# Box Shadow (TODO: 128 opactiy not working)
+			#color_box.moveCenter(color_box.center()-QtCore.QPoint(-1,-1))
+			#brush.setColor(QtGui.QColor(0.0,0.0,0.0,0.5))
+			#painter.drawRect(color_box)
 		
 class BinModelProxy(QtCore.QSortFilterProxyModel):
 
@@ -103,7 +112,7 @@ class BinModelItem(QtCore.QObject):
 		self._mob  = bin_item.mob
 		self._attributes = bin_item.mob.attributes
 
-		print(self.is_user_placed)
+		#print(self.is_user_placed)
 	
 	@property
 	def item(self) -> avb.bin.BinItem:
@@ -237,7 +246,7 @@ def show_details(selected:QtCore.QItemSelection, deselected:QtCore.QItemSelectio
 	try:
 		idx = selected.data().indexes()[0]
 	except:
-		print("Empty selection")
+		#print("Empty selection")
 		return False
 	
 	mob = idx.model().data(idx, QtCore.Qt.ItemDataRole.UserRole)
