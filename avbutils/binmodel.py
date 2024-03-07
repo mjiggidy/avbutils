@@ -144,8 +144,11 @@ class BinModel(QtCore.QAbstractItemModel):
 		self.setBin(bin)
 	
 	def setBin(self, bin:avb.bin.Bin):
+
+		self.modelAboutToBeReset.emit()
 		self._bin = bin
 		self._update_cache()
+		self.modelReset.emit()
 	
 	def _update_cache(self):
 		"""Update the item cache"""
@@ -229,6 +232,14 @@ class BinModel(QtCore.QAbstractItemModel):
 			return index.internalPointer()
 
 		return None
+	
+	def clear(self):
+		self.modelAboutToBeReset.emit()
+
+		#self._header_cache = []
+		self._item_cache = []
+		
+		self.modelReset.emit()
 		
 
 	def headerData(self, section:int, orientation:QtCore.Qt.Orientation, role:typing.Optional[int]=QtCore.Qt.DisplayRole) -> typing.Any:
