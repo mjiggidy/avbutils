@@ -47,25 +47,37 @@ class BinItemDisplayDelegate(QtWidgets.QStyledItemDelegate):
 		
 			mob = index.data(role=QtCore.Qt.ItemDataRole.UserRole)
 
+			# Set box location
 			color_box = QtCore.QRect(0,0, option.rect.height()-self.padding_px, option.rect.height()-self.padding_px)
 			color_box.moveCenter(option.rect.center())
+			
+			# Set outline and fill
+			pen = QtGui.QPen(QtGui.QColorConstants.Black)
 			brush = QtGui.QBrush()
+			#painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
+			# Use clip color if available
 			clip_color_attr = avbutils.composition_clip_color(mob)
-			if clip_color_attr is not None:
+			if clip_color_attr is None:
+				brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
+			else:
 				clip_color = QtGui.QColor(*(c/self.max_16b * self.max_8b for c in clip_color_attr ))
 				brush.setColor(clip_color)
 				brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
-				painter.fillRect(color_box, brush)			
-
-			brush.setColor(QtGui.QColorConstants.Black)
-			brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
+			
+			painter.setBrush(brush)
+			painter.setPen(pen)
 			painter.drawRect(color_box)
 
 			# Box Shadow (TODO: 128 opactiy not working)
-			#color_box.moveCenter(color_box.center()-QtCore.QPoint(-1,-1))
-			#brush.setColor(QtGui.QColor(0.0,0.0,0.0,0.5))
-			#painter.drawRect(color_box)
+			color_box.moveCenter(color_box.center()+QtCore.QPoint(1,1))
+			#color_box.setWidth(color_box.width() + 2)
+
+			pen.setColor(QtGui.QColor(0,0,0,64))
+			brush.setStyle(QtCore.Qt.BrushStyle.NoBrush)
+			painter.setPen(pen)
+			painter.setBrush(brush)
+			painter.drawRect(color_box)
 		
 class BinModelProxy(QtCore.QSortFilterProxyModel):
 
