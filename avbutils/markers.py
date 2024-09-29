@@ -83,19 +83,3 @@ def get_component_markers(c):
 			markers.extend(more_markers)
 
 	return markers
-
-
-
-
-for bin_path in sys.argv[1:]:
-
-	markers = []
-
-	with avb.open(bin_path) as bin_handle:
-		bin_content = bin_handle.content
-		for timeline in avbutils.get_timelines_from_bin(bin_content):
-			for track in timeline.tracks:
-				markers.extend(get_markers_from_track(track))
-
-		for offset, marker in markers:
-			print(timecode.Timecode(offset), MarkerInfo.from_avb_marker(offset, marker))
