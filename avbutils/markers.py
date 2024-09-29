@@ -40,6 +40,12 @@ class MarkerInfo:
 
 # CREDIT! get_markers_from_track() and get_component_markers() were "borrowed" and adapted from pyavb's "dump markers" example
 
+def get_markers_from_timeline(timeline:avb.trackgroups.Composition):
+	markers = []
+	for track in timeline.tracks:
+		markers.extend(get_markers_from_track(track))
+	return markers
+
 def get_markers_from_track(track:avb.trackgroups.Track, start:int=0):
 	components = []
 	if isinstance(track.component, avb.components.Sequence):
