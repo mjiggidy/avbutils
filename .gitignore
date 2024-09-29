@@ -3,6 +3,9 @@ bin_examples
 testfiles
 .*
 *.numbers
+Scripts/*
+pyvenv.cfg
+.gitignore
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

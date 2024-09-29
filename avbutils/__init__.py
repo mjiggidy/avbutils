@@ -6,3 +6,4 @@ from .matchback import *
 from .lockfile import *
 from .timeline import *
 from .compositions import *
+from .markers import *
