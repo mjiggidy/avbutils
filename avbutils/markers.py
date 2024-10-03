@@ -2,7 +2,7 @@ import sys, avb
 import avbutils, timecode, dataclasses, enum
 from datetime import datetime
 
-class MarkerColor(enum.Enum):
+class MarkerColors(enum.Enum):
 	"""Valid Avid marker colors"""
 	RED = "Red"
 	GREEN = "Green"
@@ -22,7 +22,7 @@ class MarkerInfo:
 	frm_offset:int
 	user:str
 	comment:str
-	color:MarkerColor
+	color:MarkerColors
 	date_created:datetime
 	date_modified:datetime
 
@@ -32,7 +32,7 @@ class MarkerInfo:
 			frm_offset = offset,
 			user = marker.attributes.get("_ATN_CRM_USER",""),
 			comment = marker.attributes.get("_ATN_CRM_COM",""),
-			color = MarkerColor(marker.attributes.get("_ATN_CRM_COLOR")),
+			color = MarkerColors(marker.attributes.get("_ATN_CRM_COLOR")),
 			date_created = datetime.fromtimestamp(marker.attributes.get("_ATN_CRM_LONG_CREATE_DATE")),
 			date_modified = datetime.fromtimestamp(marker.attributes.get("_ATN_CRM_LONG_MOD_DATE"))
 		)
