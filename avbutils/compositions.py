@@ -1,10 +1,49 @@
-import enum, avb, collections
+import enum, avb, collections, dataclasses
 
 ClipColor = collections.namedtuple("ClipColor", "R G B")
 
-def get_default_clip_colors() -> list[ClipColor]:
+# TODO: Replace the namedtuple with this
+@dataclasses.dataclass
+class ClipColorClass:
+
+	r:int
+	"""16-bit Red Channel"""
+	g:int
+	"""16-bit Green Channel"""
+	b:int
+	"""16-bit Blue Channel"""
+
+	def as_rgb16(self) -> tuple[int]:
+		"""Original RGB 16-bit"""
+		return (self.r, self.g, self.b)
+	
+	def as_rgb8(self) -> tuple[int]:
+		"""Dither to RGB 8-bit"""
+
+		return tuple([round(c/self.max_16b()*self.max_8b()) for c in self.as_rgb16()])
+	
+	@classmethod
+	def from_rgb8(cls, r:int, g:int, b:int) -> "ClipColorClass":
+		"""ClipColor from 8-bit RGB values"""
+		
+		return cls(
+			*[round(x * cls.max_16b() / cls.max_8b()) for x in (r,g,b)]
+		)
+	
+	@staticmethod
+	def max_8b():
+		"""Maximum 8bit value"""
+		return (1 << 8) - 1
+	
+	@staticmethod
+	def max_16b():
+		"""Maximum 16bit value"""
+		return (1 << 16) - 1
+
+
+def get_default_clip_colors() -> list[ClipColorClass]:
 	"""Default clip colors for top-level compositions (16-bit RGB triads)"""	
-	return [ClipColor(*x) for x in [
+	return [ClipColorClass(*x) for x in [
 		[64000,48640,48640],
 		[56832,25600,29696],
 		[65280,0,29440],
@@ -98,6 +137,6 @@ def composition_clip_color(comp:avb.trackgroups.Composition) -> tuple[int,int,in
 
 	attrs = comp.attributes
 	try:
-		return ClipColor(*(attrs[c] for c in color_attr_fields))
+		return ClipColorClass(*(attrs[c] for c in color_attr_fields))
 	except KeyError:
 		return None
