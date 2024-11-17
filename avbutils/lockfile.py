@@ -2,10 +2,12 @@
 
 import pathlib
 
-def get_lockfile_for_bin(bin_path:pathlib.Path) -> str|None:
+# TODO: LockfileInfo class
+
+def get_lockfile_for_bin(bin_path:str) -> str|None:
 	"""Return a Lockfile info if it exists"""
 
-	lock_path = bin_path.with_suffix(".lck")
+	lock_path = pathlib.Path(bin_path).with_suffix(".lck")
 	if not lock_path.exists():
 		return None
 	
