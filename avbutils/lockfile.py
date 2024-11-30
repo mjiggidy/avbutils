@@ -1,6 +1,35 @@
 """Utilites for working with bin locks (.lck files)"""
 
-import pathlib
+import pathlib, dataclasses
+
+@dataclasses.dataclass()
+class LockInfo:
+	"""Represents a bin lock file (.lck)"""
+
+	name:str
+	"""Name of the Avid the lock belongs to"""
+
+	def __postinit__(self):
+		if self.name is None:
+			raise ValueError("Username for the lock must not be empty")
+
+	@classmethod
+	def from_lockfile(cls, lock_path:str) -> "LockInfo":
+		"Read from .lck lockfile"
+
+		with open(lock_path, "rb") as lock_file:
+			try:
+				name = lock_file.read(256).decode("utf-16le").split('\x00',1)[0]
+			except Exception as e:
+				raise ValueError(f"{lock_path}: This does not appear to be a valid lock file ({e})")
+		
+		return cls(name=name)
+	
+	def to_lockfile(self, lock_path:str):
+		"""Write to .lck lockfile"""
+
+		with open(lock_path, "wb") as lock_file:
+			lock_file.write(self.name[:255].ljust(255, '\x00').encode("utf-16le"))
 
 # TODO: LockfileInfo class
 
