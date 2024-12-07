@@ -47,11 +47,8 @@ def get_markers_from_timeline(timeline:avb.trackgroups.Composition) -> list[Mark
 	return markers
 
 def get_markers_from_track(track:avb.trackgroups.Track, start:int=0):
-	components = []
-	if isinstance(track.component, avb.components.Sequence):
-		components = track.component.components
-	else:
-		components = [track.component]
+	
+	components = get_components_from_track_component(track.component)
 
 	pos = start
 	marker_list = []
@@ -68,6 +65,27 @@ def get_markers_from_track(track:avb.trackgroups.Track, start:int=0):
 			pos += item.length
 
 	return marker_list
+
+def get_components_from_track_component(track_component:avb.components.Component) -> list[avb.components.Component]:
+
+	# Most of the "main" tracks (V1, A1, etc) reference a Sequence component
+	if isinstance(track_component, avb.components.Sequence):
+		return track_component.components
+
+	# Audio tracks with RTAS effects are TrackGroups though
+	# The sub-tracks in this trackgroup consist of the usual Sequence as well as TrackEffects
+	# RTAS is the only time I've encountered this but I'll bet ya there are others
+	elif isinstance(track_component, avb.trackgroups.TrackGroup):
+		components = []
+		for sub_track in track_component.tracks:
+			if "component" not in sub_track.property_data:
+				continue
+			components.extend(get_components_from_track_component(sub_track.component))
+		return components
+
+	# Typically Timecode, Edgecode... I would imagine DescriptiveMetadata
+	else:
+		return [track_component]
 
 def get_component_markers(c):
 	if 'attributes' not in c.property_data:
