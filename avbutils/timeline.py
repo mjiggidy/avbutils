@@ -13,6 +13,21 @@ class TrackTypes(enum.Enum):
 	TIMECODE = "timecode"
 	EDGECODE = "edgecode"
 
+def format_track_label(track:avb.trackgroups.Track) -> str:
+	# TODO: Integrate this into that there `TrackTypes` enum maybe or something
+
+	if track.media_kind == "picture":
+		return "V" + str(track.index)
+	elif track.media_kind == "sound":
+		return "A" + str(track.index)
+	elif track.media_kind == "timecode":
+		return "TC" + str(track.index)
+	elif track.media_kind == "edgecode":
+		return "EC" + str(track.index)
+	else:
+		return track.media_kind + (str(track.index) if "index" in track.propertydefs else "")
+
+
 def get_timelines_from_bin(bin:avb.bin.Bin) -> collections.abc.Generator[avb.trackgroups.Composition,None,None]:
 	"""Get all top-level timelines ("Sequences" in Media Composer) in a given Avid bin"""
 	return (mob for mob in bin.toplevel() if isinstance(mob, avb.trackgroups.Composition))

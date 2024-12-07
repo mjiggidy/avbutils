@@ -20,16 +20,31 @@ class MarkerInfo:
 	# TODO: Investigate spanned markers at some point
 
 	frm_offset:int
+	"""Marker offset from start (in frames)"""
+
+	track_label:str
+	"""Track label this marker belongs to"""
+
 	user:str
+	"""Marker creator"""
+
 	comment:str
+	"""Marker comment"""
+
 	color:MarkerColors
+	"""Marker color"""
+
 	date_created:datetime
+	"""Date the marker was first created"""
+
 	date_modified:datetime
+	"""Date the marker was last modified"""
 
 	@classmethod
-	def from_avb_marker(cls, offset:int, marker:avb.misc.Marker) -> "MarkerInfo":
+	def from_avb_marker(cls, offset:int, track_label:str, marker:avb.misc.Marker) -> "MarkerInfo":
 		return cls(
 			frm_offset = offset,
+			track_label = track_label,
 			user = marker.attributes.get("_ATN_CRM_USER",""),
 			comment = marker.attributes.get("_ATN_CRM_COM",""),
 			color = MarkerColors(marker.attributes.get("_ATN_CRM_COLOR")),
@@ -60,7 +75,7 @@ def get_markers_from_track(track:avb.trackgroups.Track, start:int=0):
 		markers = get_component_markers(item)
 
 		for marker in markers:
-			marker_list.append(MarkerInfo.from_avb_marker(offset=pos + marker.comp_offset, marker=marker))
+			marker_list.append(MarkerInfo.from_avb_marker(offset=pos + marker.comp_offset, track_label=avbutils.format_track_label(track), marker=marker))
 		if not isinstance(item, avb.trackgroups.TransitionEffect):
 			pos += item.length
 

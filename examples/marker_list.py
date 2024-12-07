@@ -197,6 +197,7 @@ class AppController(QtCore.QObject):
 					self._viewmodel.addMarker(MarkerViewItem(data={
 						"Timeline": timeline_name,
 						"Timeline Start": str(timeline_tc_range.start),
+						"Track": marker_info.track_label,
 						"Color": marker_info.color.value,
 						"Timecode": str(timeline_tc_range.start + marker_info.frm_offset),
 						"User": marker_info.user,
