@@ -17,10 +17,18 @@ class ClipColor:
 		"""Original RGB 16-bit"""
 		return (self.r, self.g, self.b)
 	
+	def as_rgba16(self) -> tuple[int]:
+		"""Original RGB 16-bit values with 100% alpha"""
+		return (*self.as_rgb16(), self.max_16b())
+	
 	def as_rgb8(self) -> tuple[int]:
 		"""Dither to RGB 8-bit"""
-
 		return tuple([round(c/self.max_16b()*self.max_8b()) for c in self.as_rgb16()])
+
+	def as_rgba8(self) -> tuple[int]:
+		"""Dither to RGB 8-bit with 100% alpha"""
+		return (*self.as_rgb8(), self.max_8b())
+
 	
 	@classmethod
 	def from_rgb8(cls, r:int, g:int, b:int) -> "ClipColor":
