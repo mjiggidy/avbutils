@@ -1,6 +1,6 @@
 import sys, avb
 import avbutils, timecode, dataclasses, enum
-from datetime import datetime
+from datetime import datetime, date, time
 
 class MarkerColors(enum.Enum):
 	"""Valid Avid marker colors"""
@@ -48,10 +48,24 @@ class MarkerInfo:
 			user = marker.attributes.get("_ATN_CRM_USER",""),
 			comment = marker.attributes.get("_ATN_CRM_COM",""),
 			color = MarkerColors(marker.attributes.get("_ATN_CRM_COLOR")),
-			date_created = datetime.fromtimestamp(marker.attributes.get("_ATN_CRM_LONG_CREATE_DATE")),
-			date_modified = datetime.fromtimestamp(marker.attributes.get("_ATN_CRM_LONG_MOD_DATE"))
+			date_created = cls.get_creation_datetime_from_attributes(marker.attributes),
+			date_modified = datetime.fromtimestamp(marker.attributes.get("_ATN_CRM_LONG_MOD_DATE",0))
 		)
+	
+	@staticmethod
+	def get_creation_datetime_from_attributes(marker_attributes:avb.attributes.Attributes) -> datetime:
+		"""Get the marker creation datetime from whatever's there"""
 
+		# NOTE: Prefer _ATN_CRM_LONG_CREATE_DATE, but that's not always present
+		if "_ATN_CRM_LONG_CREATE_DATE" in marker_attributes:
+			return datetime.fromtimestamp(marker_attributes["_ATN_CRM_LONG_CREATE_DATE"])
+		
+		elif "_ATN_CRM_DATE" in marker_attributes and "_ATN_CRM_TIME" in marker_attributes:
+			m,d,y = (int(x) for x in str(marker_attributes["_ATN_CRM_DATE"]).split("/"))
+			hh,mm = (int(x) for x in str(marker_attributes["_ATN_CRM_TIME"]).split(":"))
+			return datetime.combine(date(year=int(y), month=int(m), day=int(d)), time(hour=int(hh), minute=int(mm)))
+		else:
+			return datetime.fromtimestamp(0)
 
 # CREDIT! get_markers_from_track() and get_component_markers() were "borrowed" and adapted from pyavb's "dump markers" example
 

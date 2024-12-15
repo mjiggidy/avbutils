@@ -28,6 +28,8 @@ class MarkerViewItem(QtCore.QObject):
 		"Color",
 		"Timecode",
 		"Track",
+		"Date Created",
+		"Date Modified",
 		"User",
 		"Comment",
 	]
@@ -200,6 +202,8 @@ class AppController(QtCore.QObject):
 						"Track": marker_info.track_label,
 						"Color": marker_info.color.value,
 						"Timecode": str(timeline_tc_range.start + marker_info.frm_offset),
+						"Date Created": str(marker_info.date_created),
+						"Date Modified": str(marker_info.date_modified),
 						"User": marker_info.user,
 						"Comment": marker_info.comment,
 					}))
