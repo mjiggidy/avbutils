@@ -12,6 +12,17 @@ class LockInfo:
 	def __postinit__(self):
 		if self.name is None:
 			raise ValueError("Username for the lock must not be empty")
+		
+	@staticmethod
+	def _read_utf16le(buffer) -> str:
+
+		b_name = b""
+		while True:
+			b_chars = buffer.read(2)
+			if b_chars == b"\x00\x00":
+				break
+			b_name += b_chars
+		return b_name.decode("utf-16le")
 
 	@classmethod
 	def from_lockfile(cls, lock_path:str) -> "LockInfo":
@@ -19,10 +30,9 @@ class LockInfo:
 
 		with open(lock_path, "rb") as lock_file:
 			try:
-				name = lock_file.read(256).decode("utf-16le").split('\x00',1)[0]
-			except Exception as e:
-				raise ValueError(f"{lock_path}: This does not appear to be a valid lock file ({e})")
-		
+				name = cls._read_utf16le(lock_file)
+			except UnicodeDecodeError as e:
+				raise ValueError(f"{lock_path}: This does not appear to be a valid lock file ({e})")		
 		return cls(name=name)
 	
 	def to_lockfile(self, lock_path:str):
