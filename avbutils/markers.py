@@ -47,7 +47,7 @@ class MarkerInfo:
 			track_label = track_label,
 			user = marker.attributes.get("_ATN_CRM_USER",""),
 			comment = marker.attributes.get("_ATN_CRM_COM",""),
-			color = MarkerColors(marker.attributes.get("_ATN_CRM_COLOR")),
+			color = MarkerColors(marker.attributes.get("_ATN_CRM_COLOR","Red")),
 			date_created = cls.get_creation_datetime_from_attributes(marker.attributes),
 			date_modified = datetime.fromtimestamp(marker.attributes.get("_ATN_CRM_LONG_MOD_DATE",0))
 		)
