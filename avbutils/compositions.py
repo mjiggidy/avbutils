@@ -137,7 +137,7 @@ def get_default_clip_colors() -> list[ClipColor]:
 		[51200,	14592,	14592]
 	]]
 
-def composition_clip_color(comp:avb.trackgroups.Composition) -> tuple[int,int,int]|None:
+def composition_clip_color(comp:avb.trackgroups.Composition) -> ClipColor|None:
 	"""Return the clip color of a composition if set"""
 
 	color_attr_fields = ("_COLOR_R", "_COLOR_G", "_COLOR_B")
