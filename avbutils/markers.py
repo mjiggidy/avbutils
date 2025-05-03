@@ -4,14 +4,26 @@ from datetime import datetime, date, time
 
 class MarkerColors(enum.Enum):
 	"""Valid Avid marker colors"""
-	RED = "Red"
-	GREEN = "Green"
-	BLUE = "Blue"
-	CYAN = "Cyan"
+	RED     = "Red"
+	GREEN   = "Green"
+	BLUE    = "Blue"
+	CYAN    = "Cyan"
 	MAGENTA = "Magenta"
-	YELLOW = "Yellow"
-	BLACK = "Black"
-	WHITE = "White"
+	YELLOW  = "Yellow"
+	BLACK   = "Black"
+	WHITE   = "White"
+
+class MarkerColorExtended(MarkerColors):
+	"""Additional marker colors available with Avid 2024.6"""
+
+	PINK   = "Pink"
+	FOREST = "Forest"
+	DENIM  = "Denim"
+	VIOLET = "Violet"
+	PURPLE = "Purple"
+	ORANGE = "Orange"
+	GREY   = "Grey"
+	GOLD   = "Gold"
 
 @dataclasses.dataclass()
 class MarkerInfo:
