@@ -13,14 +13,14 @@ def matchback_groupclip(group:avb.trackgroups.Selector, selected_track_index:int
 	selected_track = group.tracks[selected_track_index if selected_track_index is not None else group.selected]
 	return matchback_track(selected_track)
 
-def matchback_trackgroup(track_group:avb.trackgroups.TrackGroup, media_kind:str="picture") -> avb.components.Component:
+def matchback_trackgroup(track_group:avb.trackgroups.TrackGroup, media_kind:str="picture", use_first_track:bool=False) -> avb.components.Component:
 
 	filtered_tracks = [t for t in track_group.tracks if t.media_kind == media_kind]
 
-	if len(filtered_tracks) != 1:
-		return f"{track_group}: Got {filtered_tracks}"
-
-	return matchback_track(filtered_tracks[0])
+	if not use_first_track and len(filtered_tracks) != 1:
+		raise ValueError(f"{track_group}: Got {filtered_tracks}")
+	
+	return matchback_track(filtered_tracks)
 
 def matchback_track(track:avb.trackgroups.Track) -> avb.components.Component:
 	"""Get the component of a Track"""
@@ -33,11 +33,11 @@ def matchback_sequence(sequence:avb.components.Sequence) -> avb.components.Compo
 	# Sequences start and end with filler
 	# Probably want to do a "get component at location" thing here
 
-	if len(sequence.components) > 3:
-		return f"Sequence has {len(sequence.components)} components: {sequence.components}"
+	if len(sequence.components) != 3:
+		raise ValueError(f"Sequence has {len(sequence.components)} components: {sequence.components}")
 
 	#print(f" Returning {sequence.components[1]}")
-	return sequence.components[1]
+	return list(sequence.components)[1]
 
 def matchback_sourceclip(source_clip:avb.components.SourceClip) -> avb.components.Component:
 	"""Resolve MOB for a given `SourceClip`"""
@@ -46,6 +46,16 @@ def matchback_sourceclip(source_clip:avb.components.SourceClip) -> avb.component
 
 	# TODO: This does weird things. Investigate:
 	#return source_clip.track
+
+def matchback_trackeffect(component:avb.trackgroups.TrackEffect) -> avb.components.Component:
+	"""Track effect matchback... do my best"""
+
+	for track in component.tracks:
+		if len(track.component.components) == 1:
+			continue
+		return matchback_track(track)
+	
+	raise ValueError("Empty effects track (TODO)")
 
 def is_masterclip(component:avb.components.Component) -> bool:
 	"""Is a component a masterclip?"""
@@ -63,8 +73,11 @@ def matchback_component(component:avb.components.Component) -> avb.components.Co
 	if isinstance(component, avb.trackgroups.Composition):
 		return next(get_tracks_from_composition(component, type=TrackTypes.PICTURE, index=1))
 
-	if isinstance(component, avb.trackgroups.Selector):
+	elif isinstance(component, avb.trackgroups.Selector):
 		return matchback_groupclip(component)
+	
+	elif isinstance(component, avb.trackgroups.TrackEffect):
+		return  matchback_trackeffect(component)
 
 	elif isinstance(component, avb.trackgroups.TrackGroup):
 		return matchback_trackgroup(component)
@@ -106,30 +119,23 @@ def matchback_to_masterclip(component:avb.components.Component) -> avb.component
 
 	while not is_masterclip(component):
 
-		if isinstance(component, avb.trackgroups.Composition):
-			component = next(get_tracks_from_composition(component, type=TrackTypes.PICTURE, index=1))
-
-		if isinstance(component, avb.trackgroups.Selector):
-			component = matchback_groupclip(component)
-
-		elif isinstance(component, avb.trackgroups.TrackGroup):
-			component = matchback_trackgroup(component)
-		
-		# Oooohh.... you know whaaaat.....
-		elif isinstance(component, avb.trackgroups.Track):
-			component = matchback_track(component)
-		
-		elif isinstance(component, avb.components.SourceClip):
-			component = matchback_sourceclip(component)
-
-		elif isinstance(component, avb.components.Sequence):
-			component = matchback_sequence(component)
-
-		elif isinstance(component, avb.components.Filler):
-			break
-
-		else:
-			print(component)
+		try:
+			component = matchback_component(component)
+		except IsAsMatchedBackAsCanBe:
+			print(f"Stalled at {component}")
 			break
 		
+	return component
+
+def matchback_to_sourceclip(component:avb.components.Component) -> avb.components.SourceClip:
+	"""Match back fancy things (Selectors/Group Clips, Track Effects, etc) to their subclips"""
+
+	while not isinstance(component, avb.components.SourceClip):
+
+		try:
+			component = matchback_component(component)
+		except IsAsMatchedBackAsCanBe:
+			print(f"Stalled at {component}")
+			break
+	
 	return component
