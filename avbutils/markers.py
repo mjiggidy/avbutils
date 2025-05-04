@@ -2,16 +2,37 @@ import sys, avb
 import avbutils, timecode, dataclasses, enum
 from datetime import datetime, date, time
 
-class MarkerColors(enum.Enum):
-	"""Valid Avid marker colors"""
-	RED = "Red"
-	GREEN = "Green"
-	BLUE = "Blue"
-	CYAN = "Cyan"
-	MAGENTA = "Magenta"
-	YELLOW = "Yellow"
-	BLACK = "Black"
-	WHITE = "White"
+_marker_colors = {
+	"RED"     : "Red",
+	"GREEN"   : "Green",
+	"BLUE"    : "Blue",
+	"CYAN"    : "Cyan",
+	"MAGENTA" : "Magenta",
+	"YELLOW"  : "Yellow",
+	"BLACK"   : "Black",
+	"WHITE"   : "White",
+}
+
+_marker_colors_extended = {
+	**_marker_colors,
+	"PINK"   : "Pink",
+	"FOREST" : "Forest",
+	"DENIM"  : "Denim",
+	"VIOLET" : "Violet",
+	"PURPLE" : "Purple",
+	"ORANGE" : "Orange",
+	"GREY"   : "Grey",
+	"GOLD"   : "Gold",
+}
+
+# NOTE: I... I guess I thought I could inherit the `MarkerColors` enum 
+# to make `MarkerColorsExtended`.  But I cannot.  So I hate all of this.
+
+MarkerColors = enum.Enum("MarkerColors", _marker_colors)
+"""Standard Avid marker colors"""
+
+MarkerColorsExtended = enum.Enum("ExtendedMarkerColors", _marker_colors_extended)
+"""Additional marker colors available with Avid 2024.6"""
 
 @dataclasses.dataclass()
 class MarkerInfo:
