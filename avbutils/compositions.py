@@ -94,6 +94,31 @@ class MobUsage(enum.IntEnum):
 		"""Show name with nicer formatting"""
 		return self.name.replace("_"," ").title()
 
+class MediaKind(enum.IntEnum):
+	"""Type of media component"""
+
+	# NOTE: This comes from avb.components.Component
+
+	UNDEFINED            = 0
+	PICTURE              = 1
+	SOUND                = 2
+	TIMECODE             = 3
+	EDGECODE             = 4
+	ATTRIBUTE            = 5
+	EFFECT_DATA          = 6
+	DESCRIPTIVE_METADATA = 7
+	DATA_ESSENCE_TRACK   = 16
+
+	@classmethod
+	def from_component(cls, component:avb.components.Component):
+		return component.media_kind_id
+	
+	def __str__(self) -> str:
+		"""Show name with nice formatting"""
+		return self.name.replace("_", " ").title()
+
+
+
 def composition_is_toplevel(comp:avb.trackgroups.Composition) -> bool:
 	"""Determine if a given composition is a top-level timeline"""
 	# NOTE: Using rules from `avb.bin.Bin.toplevel()``
