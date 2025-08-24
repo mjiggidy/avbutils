@@ -123,7 +123,7 @@ class BinSiftMethod(enum.IntEnum):
 		# NOTE: Does this make sense to do?
 		return [cls.from_sift_item(item) for item in bin.sifted_settings]
 	
-class BinColumnFormat(enum.IntEnum):
+class BinColumnFormat(enum.Enum):
 	"""Display format of a bin column"""
 
 	ICON = 0
