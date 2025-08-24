@@ -69,7 +69,7 @@ class MobTypes(enum.IntEnum):
 		"""Show name with nicer formatting"""
 		return self.name.replace("_"," ").title()
 
-class MobUsage(enum.IntEnum):
+class MobUsage(enum.Enum):
 	"""Mob Usage"""
 	
 	# NOTE: From pyavb: `these usage codes seem to come from omf`
