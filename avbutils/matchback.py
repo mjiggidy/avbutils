@@ -2,6 +2,7 @@
 
 import avb
 from .timeline import get_tracks_from_composition, TrackTypes
+from . import compositions
 
 class IsAsMatchedBackAsCanBe(StopIteration):
 	"""This is as matched back as you can get, sir"""
@@ -59,13 +60,15 @@ def matchback_trackeffect(component:avb.trackgroups.TrackEffect) -> avb.componen
 
 def is_masterclip(component:avb.components.Component) -> bool:
 	"""Is a component a masterclip?"""
-	
-	return isinstance(component, avb.trackgroups.Composition) and component.mob_type == "MasterMob"
+	return isinstance(component, avb.trackgroups.Composition) and compositions.MobTypes.from_composition(component) == compositions.MobTypes.MASTER_MOB
+
+def is_subclip(component:avb.components.Component) -> bool:
+	"""Is a component a subclip?"""
+	return isinstance(component, avb.trackgroups.Composition) and compositions.MobUsage.from_composition(component) == compositions.MobUsage.SUBCLIP
 
 def is_sourcemob(component:avb.components.Component) -> bool:
 	"""Is a component a source mob?"""
-
-	return isinstance(component, avb.trackgroups.Composition) and component.mob_type == "SourceMob"
+	return isinstance(component, avb.trackgroups.Composition) and compositions.MobTypes.from_composition(component) == compositions.MobTypes.SOURCE_MOB
 
 def matchback_component(component:avb.components.Component) -> avb.components.Component:
 	"""Generic: Matchback a given component"""
