@@ -26,6 +26,62 @@ def format_track_label(track:avb.trackgroups.Track) -> str:
 		return "EC" + str(track.index)
 	else:
 		return track.media_kind + (str(track.index) if "index" in track.propertydefs else "")
+	
+def format_track_labels(tracks:list[avb.trackgroups.Track]) -> str:
+	"""Format mutliple track types for bin display (eg V1 A1-3,5-7 TC1-8 EC1)"""
+
+	def _group_ranges(ranges:list[int]) -> list:
+		"""Helper func: Group ranges together"""
+
+		index_groups = []
+		for idx in sorted(ranges):
+			if index_groups and index_groups[-1][-1] == idx -1:
+				index_groups[-1].append(idx)
+			else:
+				index_groups.append([idx])
+		
+		return index_groups
+	
+	# Collect all tracks
+	
+	track_groups = {}
+	
+	for track in tracks:
+		if track.media_kind not in track_groups:
+			track_groups[track.media_kind] = []
+		track_groups[track.media_kind].append(track.index)
+	
+	# Combine into groups
+	
+	formatted_labels = []
+	
+	if "picture" in track_groups:
+		ranges = _group_ranges(track_groups["picture"])
+		formatted_labels.append("V"+','.join([
+			f"{r[0]}-{r[-1]}" if len(r) > 1 else str(r[0]) for r in ranges
+		]))
+	if "sound" in track_groups:
+		ranges = _group_ranges(track_groups["sound"])
+		formatted_labels.append("A"+','.join([
+			f"{r[0]}-{r[-1]}" if len(r) > 1 else str(r[0]) for r in ranges
+		]))
+	if "DataEssenceTrack" in track_groups:
+		ranges = _group_ranges(track_groups["DataEssenceTrack"])
+		formatted_labels.append("D"+','.join([
+			f"{r[0]}-{r[-1]}" if len(r) > 1 else str(r[0]) for r in ranges
+		]))
+	if "timecode" in track_groups:
+		ranges = _group_ranges(track_groups["timecode"])
+		formatted_labels.append("TC"+','.join([
+			f"{r[0]}-{r[-1]}" if len(r) > 1 else str(r[0]) for r in ranges
+		]))
+	if "edgecode" in track_groups:
+		ranges = _group_ranges(track_groups["edgecode"])
+		formatted_labels.append("EC"+','.join([
+			f"{r[0]}-{r[-1]}" if len(r) > 1 else str(r[0]) for r in ranges
+		]))
+	
+	return " ".join(formatted_labels)
 
 
 def get_timelines_from_bin(bin:avb.bin.Bin) -> collections.abc.Generator[avb.trackgroups.Composition,None,None]:
