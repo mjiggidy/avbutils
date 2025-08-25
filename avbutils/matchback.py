@@ -25,7 +25,6 @@ def matchback_trackgroup(track_group:avb.trackgroups.TrackGroup, media_kind:str=
 
 def matchback_track(track:avb.trackgroups.Track) -> avb.components.Component:
 	"""Get the component of a Track"""
-
 	return track.component
 
 def matchback_sequence(sequence:avb.components.Sequence) -> avb.components.Component:
@@ -36,8 +35,7 @@ def matchback_sequence(sequence:avb.components.Sequence) -> avb.components.Compo
 
 	if len(sequence.components) != 3:
 		raise ValueError(f"Sequence has {len(sequence.components)} components: {sequence.components}")
-
-	#print(f" Returning {sequence.components[1]}")
+	
 	return list(sequence.components)[1]
 
 def matchback_sourceclip(source_clip:avb.components.SourceClip) -> avb.components.Component:
@@ -52,10 +50,9 @@ def matchback_trackeffect(component:avb.trackgroups.TrackEffect) -> avb.componen
 	"""Track effect matchback... do my best"""
 
 	for track in component.tracks:
-		if len(track.component.components) == 1:
-			continue
 		return matchback_track(track)
-	
+		if "components" not in track.component.property_data or len(track.component.components) == 1:
+			continue
 	raise ValueError("Empty effects track (TODO)")
 
 def is_masterclip(component:avb.components.Component) -> bool:
@@ -70,14 +67,19 @@ def is_sourcemob(component:avb.components.Component) -> bool:
 	"""Is a component a source mob?"""
 	return isinstance(component, avb.trackgroups.Composition) and compositions.MobTypes.from_composition(component) == compositions.MobTypes.SOURCE_MOB
 
-def matchback_component(component:avb.components.Component) -> avb.components.Component:
+def matchback_component(component:avb.components.Component, track_type:TrackTypes|None=None, track_index:int|None=None) -> avb.components.Component:
 	"""Generic: Matchback a given component"""
 
+	
+
 	if isinstance(component, avb.trackgroups.Composition):
-		return next(get_tracks_from_composition(component, type=TrackTypes.PICTURE, index=1))
+		return next(get_tracks_from_composition(component, type=track_type, index=1))
 
 	elif isinstance(component, avb.trackgroups.Selector):
 		return matchback_groupclip(component)
+	
+	elif isinstance(component, avb.components.SourceClip):
+		return matchback_sourceclip(component)
 	
 	elif isinstance(component, avb.trackgroups.TrackEffect):
 		return  matchback_trackeffect(component)
@@ -89,9 +91,6 @@ def matchback_component(component:avb.components.Component) -> avb.components.Co
 	elif isinstance(component, avb.trackgroups.Track):
 		return matchback_track(component)
 	
-	elif isinstance(component, avb.components.SourceClip):
-		return matchback_sourceclip(component)
-
 	elif isinstance(component, avb.components.Sequence):
 		return matchback_sequence(component)
 	
