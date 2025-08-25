@@ -31,9 +31,9 @@ class BinSorting(enum.IntEnum):
 			return ValueError(f"Invalid sort method: {method}")
 		
 def human_sort(text) -> list[str,int]:
-	"""Mimics Avid's human-readable text sorting (ie 9 comes before 10)"""
+	"""Prepares string to mimics Avid's human-readable text sorting (ie 9 comes before 10)"""
 	
 	# Cast any numeric values to integers for `human_sort`
-	_atoi = lambda text: int(text) if text.isdigit() else text
+	_atoi = lambda text: int(text) if text.isdigit() else text.lower()
 
 	return [_atoi(c) for c in re.split(r'(\d+)', text)]

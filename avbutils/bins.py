@@ -91,7 +91,7 @@ class BinDisplayOptions(enum.IntFlag):
 		return self.name.replace("_"," ").title()
 	
 class BinSortDirection(enum.IntEnum):
-	"""Direction the BinSortMethod will sort"""
+	"""Direction the BinSortMethod will sort.  Note: Corresponds to QtCore.Qt.SortOrder enum"""
 	
 	ASCENDING  = 0
 	"""0-9; A-Z"""
