@@ -1,5 +1,6 @@
 import enum
 import avb
+from . import compositions, matchback
 
 # TODO: Maybe .sorting.BinSorting goes here? Probably.
 
@@ -85,6 +86,48 @@ class BinDisplayOptions(enum.IntFlag):
 	def get_options_from_bin(cls, bin:avb.bin.Bin) -> "BinDisplayOptions":
 		"""Return the `BinDisplayModes` value for a given bin"""
 		return cls(bin.display_mask)
+	
+	@classmethod
+	def from_bin_item(cls, bin_item:avb.bin.BinItem) -> "BinDisplayOptions":
+
+		mapping = {
+			compositions.MobUsage.PRECOMPUTE: BinDisplayOptions.PRECOMP_RENDERED_EFFECTS, 
+			compositions.MobUsage.SUBCLIP: BinDisplayOptions.SUBCLIPS,
+			compositions.MobUsage.EFFECT: BinDisplayOptions.EFFECTS,
+			compositions.MobUsage.GROUP_CLIP: BinDisplayOptions.GROUPS,
+			compositions.MobUsage.GROUP_OOFTER: BinDisplayOptions.GROUPS,
+			compositions.MobUsage.MOTION: BinDisplayOptions.MOTION_EFFECTS,
+			compositions.MobUsage.MASTER_MOB: BinDisplayOptions.MASTER_CLIPS,
+			compositions.MobUsage.PRECOMPUTE_FILE: BinDisplayOptions.PRECOMP_RENDERED_EFFECTS,
+			compositions.MobUsage.PRECOMPUTE_SOURCE_MOB: BinDisplayOptions.PRECOMP_RENDERED_EFFECTS,
+		}
+
+		flags = []
+
+		flags.append(BinDisplayOptions.SHOW_CLIPS_CREATED_BY_USER if bin_item.user_placed else BinDisplayOptions.SHOW_REFERENCE_CLIPS)
+
+		#print(bin_item.mob.usage_code)
+
+		mob_usage = compositions.MobUsage.from_composition(bin_item.mob)
+		mob_types = compositions.MobTypes.from_composition(bin_item.mob)
+
+		if compositions.composition_is_toplevel(bin_item.mob):
+			flags.append(BinDisplayOptions.SEQUENCES)
+		
+		if matchback.is_masterclip(bin_item.mob):
+			flags.append(BinDisplayOptions.MASTER_CLIPS)
+		if matchback.is_subclip(bin_item.mob):
+			flags.append(BinDisplayOptions.SUBCLIPS)
+		if matchback.is_sourcemob(bin_item.mob):
+			flags.append(BinDisplayOptions.SOURCES)
+		
+		
+
+		if mob_usage in mapping:
+			#print(mob_usage,"in",mapping)
+			flags.append(mapping[mob_usage])
+
+		return BinDisplayOptions(sum(flags))
 	
 	def __str__(self) -> str:
 		"""Show name with nicer formatting"""
