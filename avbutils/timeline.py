@@ -13,6 +13,10 @@ class TrackTypes(enum.Enum):
 	TIMECODE = "timecode"
 	EDGECODE = "edgecode"
 
+	@classmethod
+	def from_track(cls, track:avb.trackgroups.Track) -> "TrackTypes":
+		return cls(track.media_kind)
+
 def format_track_label(track:avb.trackgroups.Track) -> str:
 	# TODO: Integrate this into that there `TrackTypes` enum maybe or something
 

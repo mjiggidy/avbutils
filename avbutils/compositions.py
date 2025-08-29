@@ -1,4 +1,5 @@
 import enum, avb, collections, dataclasses
+from . import timeline
 
 #ClipColor = collections.namedtuple("ClipColor", "R G B")
 
@@ -161,6 +162,11 @@ def get_default_clip_colors() -> list[ClipColor]:
 		[32768,	9216,	9216 ],
 		[51200,	14592,	14592]
 	]]
+
+def get_track_types_from_composition(comp:avb.trackgroups.Composition) -> set[timeline.TrackTypes]:
+	"""Get the unique media types of tracks contained in the composition"""
+
+	return set(timeline.TrackTypes.from_track(t) for t in comp.tracks)
 
 def composition_clip_color(comp:avb.trackgroups.Composition) -> ClipColor|None:
 	"""Return the clip color of a composition if set"""
