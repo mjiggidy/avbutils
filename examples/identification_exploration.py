@@ -1,3 +1,9 @@
+"""
+Adventures in identifying what kind of thing, exactly, each mob is
+
+Will use this witht avbutils.bins.BinDisplayOptions enum
+"""
+
 import sys, os, typing
 import avb, avbutils
 
@@ -49,12 +55,22 @@ def composition_is_motioneffect_mob(comp:avb.trackgroups.Composition) -> bool:
 	# NOTE: DID NOT FIND ANY YET
 	return avbutils.MobUsage.from_composition(comp) == avbutils.MobUsage.MOTION
 
-
-def composition_is_precompute(comp:avb.trackgroups.Composition) -> bool:
+def composition_is_precompute_clip(comp:avb.trackgroups.Composition) -> bool:
 	# NOTE: avbutils.MobUsage.PRECOMPUTE seems to pair with avbutils.MobTypes.MASTER_MOB.  So like a Precompute Clip
 	# Then avbutils.MobUsage.PRECOMPUTE_FILE,PRECOMPUTE_SOURCE_MOB source/file mobs pair with avbutils.MobTypes.SOURCE_MOB
 	# Need to verify
-	return avbutils.MobUsage.from_composition(comp) in [avbutils.MobUsage.PRECOMPUTE, avbutils.MobUsage.PRECOMPUTE_FILE, avbutils.MobUsage.PRECOMPUTE_SOURCE_MOB]
+	return avbutils.MobTypes.from_composition(comp) == avbutils.MobTypes.MASTER_MOB \
+	   and avbutils.MobUsage.from_composition(comp) == avbutils.MobUsage.PRECOMPUTE
+
+def composition_is_precompute_mob(comp:avb.trackgroups.Composition) -> bool:
+	# NOTE: avbutils.MobUsage.PRECOMPUTE seems to pair with avbutils.MobTypes.MASTER_MOB.  So like a Precompute Clip?
+	# Then avbutils.MobUsage.PRECOMPUTE_FILE,PRECOMPUTE_SOURCE_MOB source/file mobs pair with avbutils.MobTypes.SOURCE_MOB
+	# Need to verify
+	return avbutils.MobTypes.from_composition(comp) == avbutils.MobTypes.SOURCE_MOB \
+	   and avbutils.MobUsage.from_composition(comp) in {avbutils.MobUsage.PRECOMPUTE_FILE, avbutils.MobUsage.PRECOMPUTE_SOURCE_MOB}
+
+
+
 
 
 
@@ -124,10 +140,19 @@ def get_motioneffects_from_bin(bin_content:avb.bin.Bin, allow_reference_clips:bo
 			continue
 		yield i.mob
 
-def get_precomputes_from_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool=False) -> typing.Generator[avb.trackgroups.Composition,None,None]:
+def get_precompute_clips_from_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool=False) -> typing.Generator[avb.trackgroups.Composition,None,None]:
 
 	for i in bin_content.items:
-		if not composition_is_precompute(i.mob):
+		if not composition_is_precompute_clip(i.mob):
+			continue
+		if not allow_reference_clips and not i.user_placed:
+			continue
+		yield i.mob
+
+def get_precompute_mobs_from_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool=False) -> typing.Generator[avb.trackgroups.Composition,None,None]:
+
+	for i in bin_content.items:
+		if not composition_is_precompute_mob(i.mob):
 			continue
 		if not allow_reference_clips and not i.user_placed:
 			continue
@@ -142,7 +167,8 @@ def get_precomputes_from_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool
 
 
 
-def show_precomute_data_for_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool=False):
+
+def show_precompute_mobs_for_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool=False):
 
 	# NOTE:
 
@@ -150,7 +176,36 @@ def show_precomute_data_for_bin(bin_content:avb.bin.Bin, allow_reference_clips:b
 	clip_video = []
 	clip_other = []
 
-	for clip in get_precomputes_from_bin(bin_content, allow_reference_clips=allow_reference_clips):
+	for clip in get_precompute_mobs_from_bin(bin_content, allow_reference_clips=allow_reference_clips):
+
+		print(clip)
+
+		track_types = avbutils.get_track_types_from_composition(clip)
+
+
+		if avbutils.TrackTypes.PICTURE in track_types:
+			print("Looks like a video", avbutils.MobUsage.from_composition(clip), avbutils.MobTypes.from_composition(clip))
+			clip_video.append(clip)
+		elif avbutils.TrackTypes.SOUND in track_types:
+			print("Looks like an audio", avbutils.MobUsage.from_composition(clip), avbutils.MobTypes.from_composition(clip))
+			clip_audio.append(clip)
+		else:
+			print("Weird one:", track_types)
+			clip_other.append(clip)
+		
+		print("--")
+
+	print(f"{len(clip_video)=}  {len(clip_audio)=}  {len(clip_other)=}")
+
+def show_precompute_clips_for_bin(bin_content:avb.bin.Bin, allow_reference_clips:bool=False):
+
+	# NOTE:
+
+	clip_audio = []
+	clip_video = []
+	clip_other = []
+
+	for clip in get_precompute_clips_from_bin(bin_content, allow_reference_clips=allow_reference_clips):
 
 		print(clip)
 
@@ -390,7 +445,7 @@ def main(bin_path:os.PathLike):
 
 		#show_masterclip_data_for_bin(bin_handle.content, True)
 		
-		show_precomute_data_for_bin(bin_handle.content, True)
+		show_precompute_mobs_for_bin(bin_handle.content, True)
 
 
 
