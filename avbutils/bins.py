@@ -90,44 +90,39 @@ class BinDisplayOptions(enum.IntFlag):
 	@classmethod
 	def from_bin_item(cls, bin_item:avb.bin.BinItem) -> "BinDisplayOptions":
 
-		mapping = {
-			compositions.MobUsage.PRECOMPUTE: BinDisplayOptions.PRECOMP_RENDERED_EFFECTS, 
-			compositions.MobUsage.SUBCLIP: BinDisplayOptions.SUBCLIPS,
-			compositions.MobUsage.EFFECT: BinDisplayOptions.EFFECTS,
-			compositions.MobUsage.GROUP_CLIP: BinDisplayOptions.GROUPS,
-			compositions.MobUsage.GROUP_OOFTER: BinDisplayOptions.GROUPS,
-			compositions.MobUsage.MOTION: BinDisplayOptions.MOTION_EFFECTS,
-			compositions.MobUsage.MASTER_MOB: BinDisplayOptions.MASTER_CLIPS,
-			compositions.MobUsage.PRECOMPUTE_FILE: BinDisplayOptions.PRECOMP_RENDERED_EFFECTS,
-			compositions.MobUsage.PRECOMPUTE_SOURCE_MOB: BinDisplayOptions.PRECOMP_RENDERED_EFFECTS,
-		}
-
 		flags = []
+		flags.append(cls.SHOW_CLIPS_CREATED_BY_USER if bin_item.user_placed else cls.SHOW_REFERENCE_CLIPS)
 
-		flags.append(BinDisplayOptions.SHOW_CLIPS_CREATED_BY_USER if bin_item.user_placed else BinDisplayOptions.SHOW_REFERENCE_CLIPS)
+		comp:avb.trackgroups.Composition = bin_item.mob
 
-		#print(bin_item.mob.usage_code)
+		#print(comp)
 
-		mob_usage = compositions.MobUsage.from_composition(bin_item.mob)
-		mob_types = compositions.MobTypes.from_composition(bin_item.mob)
-
-		if compositions.composition_is_toplevel(bin_item.mob):
-			flags.append(BinDisplayOptions.SEQUENCES)
+		if compositions.composition_is_timeline(comp):
+			flags.append(cls.SEQUENCES)
+		elif compositions.composition_is_masterclip(comp):
+			flags.append(cls.MASTER_CLIPS)
+		elif compositions.composition_is_subclip(comp):
+			flags.append(cls.SUBCLIPS)
+		elif compositions.composition_is_effect_mob(comp):
+			flags.append( cls.EFFECTS)
+		elif compositions.composition_is_groupclip(comp):
+			flags.append(cls.GROUPS)
+		elif compositions.composition_is_groupoofter(comp):
+			flags.append(cls.GROUPS)
+		elif compositions.composition_is_motioneffect_mob(comp):
+			flags.append(cls.MOTION_EFFECTS)
+		elif compositions.composition_is_precompute_clip(comp):
+			flags.append(cls.PRECOMP_TITLES_MATTEKEYS)
+		elif compositions.composition_is_precompute_mob(comp):
+			flags.append(cls.PRECOMP_RENDERED_EFFECTS)
+		elif compositions.composition_is_source_mob(comp):
+			flags.append(cls.SOURCES)
+		elif compositions.composition_is_master_mob(comp):
+			flags.append(cls.MASTER_CLIPS)
+		else:
+			raise ValueError(f"Unable to identify mob role ({compositions.MobTypes.from_composition(comp)=}) ({compositions.MobUsage.from_composition(comp)}=)")
 		
-		if matchback.is_masterclip(bin_item.mob):
-			flags.append(BinDisplayOptions.MASTER_CLIPS)
-		if matchback.is_subclip(bin_item.mob):
-			flags.append(BinDisplayOptions.SUBCLIPS)
-		if matchback.is_sourcemob(bin_item.mob):
-			flags.append(BinDisplayOptions.SOURCES)
-		
-		
-
-		if mob_usage in mapping:
-			#print(mob_usage,"in",mapping)
-			flags.append(mapping[mob_usage])
-
-		return BinDisplayOptions(sum(flags))
+		return cls(sum(flags))
 	
 	def __str__(self) -> str:
 		"""Show name with nicer formatting"""
@@ -177,6 +172,9 @@ class BinColumnFormat(enum.Enum):
 
 	USER_TEXT = 2
 	"""User-editable text field"""
+
+	WHATS_THIS = 4
+	"Say what"
 
 	WHAT = 20
 

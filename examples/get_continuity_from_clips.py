@@ -358,7 +358,7 @@ def get_continuity_list_for_timeline(timeline:avb.trackgroups.Composition) -> li
 		continuity_masterclip = avbutils.matchback_sourceclip(continuity_subclip)
 		
 		# Need to do a recursive matchback thing, but for now we know there won't be a big heirarchy
-		if not avbutils.is_masterclip(continuity_masterclip):
+		if not avbutils.composition_is_masterclip(continuity_masterclip):
 			print(f"** Skipping {continuity_masterclip}")
 			continue
 

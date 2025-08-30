@@ -55,22 +55,8 @@ def matchback_trackeffect(component:avb.trackgroups.TrackEffect) -> avb.componen
 			continue
 	raise ValueError("Empty effects track (TODO)")
 
-def is_masterclip(component:avb.components.Component) -> bool:
-	"""Is a component a masterclip?"""
-	return isinstance(component, avb.trackgroups.Composition) and compositions.MobTypes.from_composition(component) == compositions.MobTypes.MASTER_MOB
-
-def is_subclip(component:avb.components.Component) -> bool:
-	"""Is a component a subclip?"""
-	return isinstance(component, avb.trackgroups.Composition) and compositions.MobUsage.from_composition(component) == compositions.MobUsage.SUBCLIP
-
-def is_sourcemob(component:avb.components.Component) -> bool:
-	"""Is a component a source mob?"""
-	return isinstance(component, avb.trackgroups.Composition) and compositions.MobTypes.from_composition(component) == compositions.MobTypes.SOURCE_MOB
-
 def matchback_component(component:avb.components.Component, track_type:TrackTypes|None=None, track_index:int|None=None) -> avb.components.Component:
-	"""Generic: Matchback a given component"""
-
-	
+	"""Generic: Matchback a given component"""	
 
 	if isinstance(component, avb.trackgroups.Composition):
 		return next(get_tracks_from_composition(component, type=track_type, index=1))
@@ -108,7 +94,7 @@ def matchback_to_sourcemob(component:avb.components.Component) -> avb.components
 	while True:
 		try:
 			component = matchback_component(component)
-			if is_sourcemob(component):
+			if isinstance(component, avb.trackgroups.Composition) and compositions.composition_is_source_mob(component):
 				source_mob = component
 		except IsAsMatchedBackAsCanBe:
 			break
@@ -119,7 +105,7 @@ def matchback_to_sourcemob(component:avb.components.Component) -> avb.components
 def matchback_to_masterclip(component:avb.components.Component) -> avb.components.Component:
 	"""Given a component, match it back until we're at the masterclip"""
 
-	while not is_masterclip(component):
+	while not compositions.composition_is_masterclip(component):
 
 		try:
 			component = matchback_component(component)

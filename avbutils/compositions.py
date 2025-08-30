@@ -178,3 +178,67 @@ def composition_clip_color(comp:avb.trackgroups.Composition) -> ClipColor|None:
 		return ClipColor(*(attrs[c] for c in color_attr_fields))
 	except KeyError:
 		return None
+	
+
+
+# Composition Identification
+
+def composition_is_timeline(comp:avb.trackgroups.Composition) -> bool:
+	return MobTypes.from_composition(comp) == MobTypes.COMPOSITION_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.UNDEFINED
+
+def composition_is_masterclip(comp:avb.trackgroups.Composition) -> bool:
+	"""Composition is a regular masterclip"""
+	return MobTypes.from_composition(comp) == MobTypes.MASTER_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.UNDEFINED
+
+def composition_is_subclip(comp:avb.trackgroups.Composition) -> bool:
+	return MobTypes.from_composition(comp) == MobTypes.COMPOSITION_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.SUBCLIP
+
+def composition_is_source_mob(comp:avb.trackgroups.Composition) -> bool:
+	# Straight-up source mob, not for effects renders etc, I don't think
+	return MobTypes.from_composition(comp) == MobTypes.SOURCE_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.UNDEFINED
+
+def composition_is_effect_mob(comp:avb.trackgroups.Composition) -> bool:
+	return MobUsage.from_composition(comp) == MobUsage.EFFECT
+
+def composition_is_groupclip(comp:avb.trackgroups.Composition) -> bool:
+	# MobType.COMPOSITION_MOB always, it seems
+	return MobTypes.from_composition(comp) == MobTypes.COMPOSITION_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.GROUP_CLIP
+
+def composition_is_groupoofter(comp:avb.trackgroups.Composition) -> bool:
+	# NOTE: GroupClip/GroupOofter == MasterClip/MasterMob?  Question mark?
+	# Seems to accompany GroupClips 1-to-1
+	# MobType.COMPOSITION_MOB always, it seems
+	return MobTypes.from_composition(comp) == MobTypes.COMPOSITION_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.GROUP_OOFTER
+
+def composition_is_motioneffect_mob(comp:avb.trackgroups.Composition) -> bool:
+	# NOTE: DID NOT FIND ANY YET
+	return MobTypes.from_composition(comp) == MobTypes.COMPOSITION_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.MOTION
+
+def composition_is_precompute_clip(comp:avb.trackgroups.Composition) -> bool:
+	# NOTE: MobUsage.PRECOMPUTE seems to pair with MobTypes.MASTER_MOB.  So like a Precompute Clip
+	# Then MobUsage.PRECOMPUTE_FILE,PRECOMPUTE_SOURCE_MOB source/file mobs pair with MobTypes.SOURCE_MOB
+	# Need to verify
+	return MobTypes.from_composition(comp) == MobTypes.MASTER_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.PRECOMPUTE
+
+def composition_is_precompute_mob(comp:avb.trackgroups.Composition) -> bool:
+	# NOTE: MobUsage.PRECOMPUTE seems to pair with MobTypes.MASTER_MOB.  So like a Precompute Clip?
+	# Then MobUsage.PRECOMPUTE_FILE,PRECOMPUTE_SOURCE_MOB source/file mobs pair with MobTypes.SOURCE_MOB
+	# Need to verify
+	return MobTypes.from_composition(comp) == MobTypes.SOURCE_MOB \
+	   and MobUsage.from_composition(comp) in {MobUsage.PRECOMPUTE_FILE, MobUsage.PRECOMPUTE_SOURCE_MOB}
+
+def composition_is_master_mob(comp:avb.trackgroups.Composition) -> bool:
+	# I think this'll be reference mobs, vs user-placed Masterclips?  Let's seeee....
+	return MobTypes.from_composition(comp) == MobTypes.MASTER_MOB \
+	   and MobUsage.from_composition(comp) == MobUsage.MASTER_MOB
+
+
+
