@@ -22,7 +22,7 @@ if __name__ == "__main__":
 		mob_type: avbutils.MobTypes
 		mob_usage: avbutils.MobUsage
 		is_user_placed : bool
-		identified_as: avbutils.BinDisplayOptions
+		identified_as: avbutils.BinDisplayItemTypes
 
 	if not len(sys.argv) > 1:
 		sys.exit(f"Usage: {pathlib.Path(__file__).name} folder/fulla/bins/")
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 					mob_type  = avbutils.MobTypes.from_composition(item.mob),
 					mob_usage = avbutils.MobUsage.from_composition(item.mob),
 					is_user_placed = item.user_placed,
-					identified_as = avbutils.BinDisplayOptions.from_bin_item(item)
+					identified_as = avbutils.BinDisplayItemTypes.from_bin_item(item)
 				)
 
 				if mob_info not in infos:

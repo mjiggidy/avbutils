@@ -37,7 +37,7 @@ class BinDisplayModes(enum.IntEnum):
 		"""Return the `BinDisplayModes` value for a given bin"""
 		return cls(bin.display_mode)
 
-class BinDisplayOptions(enum.IntFlag):
+class BinDisplayItemTypes(enum.IntFlag):
 	"""Types of data to display in the bin (from "Set Bin Display" dialog)"""
 
 	# NOTE: Data originates from `avb.bin.Bin.display_mask` property
@@ -83,12 +83,12 @@ class BinDisplayOptions(enum.IntFlag):
 	"""Show Linked Master Clips"""
 
 	@classmethod
-	def get_options_from_bin(cls, bin:avb.bin.Bin) -> "BinDisplayOptions":
+	def get_options_from_bin(cls, bin:avb.bin.Bin) -> "BinDisplayItemTypes":
 		"""Return the `BinDisplayModes` value for a given bin"""
 		return cls(bin.display_mask)
 	
 	@classmethod
-	def from_bin_item(cls, bin_item:avb.bin.BinItem) -> "BinDisplayOptions":
+	def from_bin_item(cls, bin_item:avb.bin.BinItem) -> "BinDisplayItemTypes":
 
 		flags = []
 		flags.append(cls.SHOW_CLIPS_CREATED_BY_USER if bin_item.user_placed else cls.SHOW_REFERENCE_CLIPS)

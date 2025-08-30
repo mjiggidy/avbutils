@@ -117,6 +117,10 @@ def get_timecode_range_for_composition(composition:avb.trackgroups.Composition) 
 	
 	timecode_component = timecode_track.component
 
+	# I think maybe SourceMobs store their timecode in a sequence like this?
+	if isinstance(timecode_component, avb.components.Sequence):
+		timecode_component = timecode_component.components[1]
+
 	if not isinstance(timecode_component, avb.components.Timecode):
 		raise ValueError(f"Timecode track 1 is not a Timecode component: {timecode_component}")
 
