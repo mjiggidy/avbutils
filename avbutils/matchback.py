@@ -16,12 +16,15 @@ def matchback_groupclip(group:avb.trackgroups.Selector, selected_track_index:int
 
 def matchback_trackgroup(track_group:avb.trackgroups.TrackGroup, media_kind:str="picture", use_first_track:bool=False) -> avb.components.Component:
 
+	# I don't quite remember what I was doing here
+
 	filtered_tracks = [t for t in track_group.tracks if t.media_kind == media_kind]
 
 	if not use_first_track and len(filtered_tracks) != 1:
 		raise ValueError(f"{track_group}: Got {filtered_tracks}")
 	
-	return matchback_track(filtered_tracks)
+	#print("Sending", filtered_tracks[0])
+	return matchback_track(filtered_tracks[0])
 
 def matchback_track(track:avb.trackgroups.Track) -> avb.components.Component:
 	"""Get the component of a Track"""
