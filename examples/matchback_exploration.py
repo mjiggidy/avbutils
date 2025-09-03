@@ -1,3 +1,7 @@
+"""
+Wrapping my head around the heirarchy
+"""
+
 import sys
 import avb, avbutils
 
@@ -184,10 +188,9 @@ def matchback_from_masterclip(masterclip:avb.trackgroups.Composition):
 					print("Sourcemob track component is weird:", tape_comp_track_component)
 			
 				print(tape_comp_track_component)
-				#import pprint
-				#pprint.pprint(tape_comp_track_component.property_data)
+				
 
-
+				# Left off here
 
 
 
@@ -208,8 +211,8 @@ if __name__ == "__main__":
 	with avb.open(sys.argv[1]) as bin_handle:
 
 		try:
-			masterclip = next(item.mob for item in bin_handle.content.items if item.user_placed and avbutils.compositions.composition_is_subclip(item.mob))
+			masterclip = next(item.mob for item in bin_handle.content.items if item.user_placed and avbutils.compositions.composition_is_masterclip(item.mob))
 		except StopIteration:
 			sys.exit("Aint none")
 		else:
-			matchback_from_subclip(masterclip)
+			matchback_from_masterclip(masterclip)
