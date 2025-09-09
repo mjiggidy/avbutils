@@ -210,9 +210,22 @@ if __name__ == "__main__":
 	
 	with avb.open(sys.argv[1]) as bin_handle:
 
+		for mob in [item.mob for item in bin_handle.content.items if item.user_placed]:
+
+			if avbutils.compositions.composition_is_masterclip(mob):
+				matchback_from_masterclip(mob)
+
+			elif avbutils.compositions.composition_is_subclip(mob):
+				matchback_from_subclip(mob)
+			else:
+				continue
+
+		exit
+		
+
 		try:
-			masterclip = next(item.mob for item in bin_handle.content.items if item.user_placed and avbutils.compositions.composition_is_masterclip(item.mob))
+			masterclip = next(item.mob for item in bin_handle.content.items if item.user_placed and avbutils.compositions.composition_is_subclip(item.mob))
 		except StopIteration:
 			sys.exit("Aint none")
 		else:
-			matchback_from_masterclip(masterclip)
+			matchback_from_subclip(masterclip)
