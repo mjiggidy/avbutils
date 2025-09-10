@@ -15,7 +15,7 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	
 	component = track.component
 
-	if isinstance(component, avb.trackgroups.TrackEffect):
+	if isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp):
 		# Unwrap TrackEffect
 		track = next(filter(lambda t: t.media_kind == track.media_kind and t.index == track.index, component.tracks))
 		component = track.component
@@ -51,9 +51,68 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 
 
 
+
+def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
+
+	for comp in comps:
+
+		print("\n---\n")
+		print(comp)
+		
+		tracks_tc = [t for t in comp.tracks if t.media_kind == "timecode"]
+		if tracks_tc:
+			print(f"Has {len(tracks_tc)} timecode tracks:")
+			for track in tracks_tc:
+				print_timecode_track(track)
+
+
+		tracks_edge = [t for t in comp.tracks if t.media_kind == "edgecode"]
+		if tracks_edge:
+			print(f"Has {len(tracks_edge)} edgecode tracks")
+		
+		print(comp.descriptor)
+
+		if isinstance(comp.descriptor, avb.essence.TapeDescriptor):
+			print(f"Tape name: {comp.name}")
+
+		elif isinstance(comp.descriptor, avb.essence.MediaDescriptor):
+
+			if isinstance(comp.descriptor.locator, avb.misc.MSMLocator):
+				print(f"Avid media from {comp.descriptor.locator.last_known_volume_utf8}, MobID: {comp.descriptor.locator.mob_id}")
+
+			elif isinstance(comp.descriptor.locator, avb.misc.FileLocator):
+				print(f"Source file name: {comp.name}")
+				print(f"Source file path: {comp.descriptor.locator.path_utf8}")
+
+			elif isinstance(comp.descriptor.locator, avb.misc.URLLocator):
+				raise NotImplementedError("Don't know what to do with avb.misc.URLLocator")
+			
+			else:
+				print("**UNKNOWN**")
+				print(f"Descriptor: {comp.descriptor.property_data}")
+				print(f"Locator: {comp.descriptor.locator}")
+
+
+
 # ############ #
 # End of tests #
 # ############ #
+
+def print_timecode_track(track:avb.trackgroups.Track):
+
+	import timecode
+
+	if isinstance(track.component, avb.components.Sequence):
+
+		components = [c for c in track.component.components]
+	else:
+		components = [track.component]
+	
+	for tc in components:
+		
+		if isinstance(tc, avb.components.Timecode):
+			tc_parsed = timecode.TimecodeRange(start=timecode.Timecode(tc.start, rate=round(tc.edit_rate)), duration=tc.length)
+			print("  - ", f"{tc_parsed.start} - {tc_parsed.end} ({tc_parsed.duration}) @ {tc_parsed.rate}")
 
 def trace_clip(composition:avb.trackgroups.Composition, track:avb.trackgroups.Track, frame_offset:int) -> list[avb.trackgroups.Composition]:
 
@@ -83,7 +142,7 @@ def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
-	return avbutils.composition_is_masterclip(bin_item.mob)
+	return avbutils.composition_is_masterclip(bin_item.mob) #and "/" in bin_item.mob.name
 
 
 # ############## #
@@ -105,6 +164,8 @@ if __name__ == "__main__":
 		test_track = next(filter(is_valid_test_track, test_clip.tracks))
 		
 		comps = trace_clip(test_clip, test_track, frame_offset=0)
+
+		inspect_comp_stack(comps)
 
 		#for comp in comps:
 		#	print(comp.essence)
