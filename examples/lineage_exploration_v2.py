@@ -15,6 +15,10 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	
 	component = track.component
 
+	if isinstance(component, avb.trackgroups.Selector):
+		#print(component)
+		component = next(t for t in avbutils.get_tracks_from_composition(component, avbutils.TrackTypes.PICTURE, component.selected)).component
+
 	if isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp):
 		# Unwrap TrackEffect
 		track = next(filter(lambda t: t.media_kind == track.media_kind and t.index == track.index, component.tracks))
@@ -33,6 +37,8 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 
 	offset += component.start_time
 
+	print("Offset: ", offset)
+
 
 	#print("Resolved", component)
 	#print(component.property_data)
@@ -40,10 +46,10 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	resolved_mob = track.root.content.find_by_mob_id(component.mob_id)
 	resolved_track = next(t for t in resolved_mob.tracks if t.media_kind == track.media_kind and t.index == component.track_id)
 
-	try:
-		print(resolved_mob.descriptor)
-	except:
-		pass
+	#try:
+	#	print(resolved_mob.descriptor)
+	#except:
+	#	pass
 
 	# NOTE: Need to think about offset
 	return resolved_mob, resolved_track, offset
@@ -143,7 +149,7 @@ def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
-	return avbutils.composition_is_masterclip(bin_item.mob) #and "/" in bin_item.mob.name
+	return avbutils.composition_is_groupclip(bin_item.mob) #and "/" in bin_item.mob.name
 
 
 # ############## #
@@ -161,10 +167,14 @@ if __name__ == "__main__":
 		import random
 
 		# Find valid comp and track for testing
-		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items))).mob
-		test_track = next(filter(is_valid_test_track, test_clip.tracks))
+		test_clip  = random.choice(bin_handle.content.items).mob
+
+		if isinstance(test_clip, avb.trackgroups.Selector):
+			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
+		else:
+			test_track = next(filter(is_valid_test_track, test_clip.tracks))
 		
-		comps = trace_clip(test_clip, test_track, frame_offset=0)
+		comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
 
 		inspect_comp_stack(comps)
 
