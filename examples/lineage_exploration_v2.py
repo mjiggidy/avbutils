@@ -35,12 +35,13 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	if component.track_id == 0:
 		raise StopMatchback
 
-	offset += component.start_time
+	#offset += component.start_time
 
 	print("Offset: ", offset)
 
 
 	#print("Resolved", component)
+	#print(component.start_time)
 	#print(component.property_data)
 
 	resolved_mob = track.root.content.find_by_mob_id(component.mob_id)
@@ -52,7 +53,7 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	#	pass
 
 	# NOTE: Need to think about offset
-	return resolved_mob, resolved_track, offset
+	return resolved_mob, resolved_track, component.start_time
 
 
 
@@ -65,39 +66,53 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 		print("\n---\n")
 		print(comp)
 		
-		tracks_tc = [t for t in comp.tracks if t.media_kind == "timecode"]
-		if tracks_tc:
-			print(f"Has {len(tracks_tc)} timecode tracks:")
-			for track in tracks_tc:
-				print_timecode_track(track)
-				print("-")
-
-
-		tracks_edge = [t for t in comp.tracks if t.media_kind == "edgecode"]
-		if tracks_edge:
-			print(f"Has {len(tracks_edge)} edgecode tracks")
+		#tracks_tc = [t for t in comp.tracks if t.media_kind == "timecode"]
+		#if tracks_tc:
+		#	print(f"Has {len(tracks_tc)} timecode tracks:")
+		#	for track in tracks_tc:
+		#		print_timecode_track(track)
+		#		print("-")
 		
-		print(comp.descriptor)
+		print("Has tracks: ", avbutils.format_track_labels(comp.tracks))
+		
+		if not comp.descriptor:
+			print("Master Mob:", comp.name)
+		else:
+			print(comp.descriptor)
 
 		if isinstance(comp.descriptor, avb.essence.TapeDescriptor):
-			print(f"Tape name: {comp.name}")
+			print(f"TAPE MOB: {comp.name}")
+
+		elif isinstance(comp.descriptor, avb.essence. NagraDescriptor):
+			print(f"SOUNDROLL MOB: {comp.name}")
 
 		elif isinstance(comp.descriptor, avb.essence.MediaDescriptor):
 
 			if isinstance(comp.descriptor.locator, avb.misc.MSMLocator):
-				print(f"Avid media from {comp.descriptor.locator.last_known_volume_utf8}, MobID: {comp.descriptor.locator.mob_id}")
+				print(f"ESSENCE MOB: Avid media from {comp.descriptor.locator.last_known_volume_utf8}, MobID: {comp.descriptor.locator.mob_id}")
 
 			elif isinstance(comp.descriptor.locator, avb.misc.FileLocator):
-				print(f"Source file name: {comp.name}")
-				print(f"Source file path: {comp.descriptor.locator.path_utf8}")
+				print(f"ESSENCE MOB: Source file name: {comp.name}")
+				print(f"ESSENCE MOB: Source file path: {comp.descriptor.locator.path_utf8}")
 
 			elif isinstance(comp.descriptor.locator, avb.misc.URLLocator):
 				raise NotImplementedError("Don't know what to do with avb.misc.URLLocator")
 			
 			else:
+
+
 				print("**UNKNOWN**")
 				print(f"Descriptor: {comp.descriptor.property_data}")
 				print(f"Locator: {comp.descriptor.locator}")
+				for track in comp.tracks:
+					print(avbutils.format_track_label(track), track.component, f"({[c.property_data for c in track.component.components]})")
+
+
+def resolve_from_comp_stack(comps:list[avb.trackgroups.Composition]):
+	"""Resolve clip attributes from all the comps resolved"""
+
+	tapes = []
+	files = []
 
 
 
@@ -130,11 +145,14 @@ def trace_clip(composition:avb.trackgroups.Composition, track:avb.trackgroups.Tr
 
 	comps = []
 
+	last_component_offset = 0
+
 	while True:
 		comps.append(composition)
 		try:
 			#print(frame_offset)
-			composition, track, frame_offset = get_mob_from_track_at_offset(track, frame_offset)
+			print(f"Looking up new offset {frame_offset + last_component_offset}")
+			composition, track, last_component_offset = get_mob_from_track_at_offset(track, frame_offset + last_component_offset+1) # NOTE: WHY THE +1 NEEDED ARGH
 		except StopMatchback:
 			break
 		except FillerDuringMatchback:
@@ -149,7 +167,9 @@ def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
-	return avbutils.composition_is_groupclip(bin_item.mob) #and "/" in bin_item.mob.name
+	return bin_item.user_placed
+	#return avbutils.composition_is_subclip(bin_item.mob) #and "/" in bin_item.mob.name
+	#return avbutils.composition_is_groupclip(bin_item.mob) #and "/" in bin_item.mob.name
 
 
 # ############## #
@@ -167,14 +187,15 @@ if __name__ == "__main__":
 		import random
 
 		# Find valid comp and track for testing
-		test_clip  = random.choice(bin_handle.content.items).mob
+		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items))).mob
 
 		if isinstance(test_clip, avb.trackgroups.Selector):
 			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
 		else:
 			test_track = next(filter(is_valid_test_track, test_clip.tracks))
 		
-		comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
+		#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
+		comps = trace_clip(test_clip, test_track, frame_offset=0)
 
 		inspect_comp_stack(comps)
 
