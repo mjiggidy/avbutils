@@ -64,6 +64,7 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 			print(f"Has {len(tracks_tc)} timecode tracks:")
 			for track in tracks_tc:
 				print_timecode_track(track)
+				print("-")
 
 
 		tracks_edge = [t for t in comp.tracks if t.media_kind == "edgecode"]
