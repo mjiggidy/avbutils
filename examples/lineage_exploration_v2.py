@@ -7,6 +7,12 @@ class StopMatchback(StopIteration):
 class FillerDuringMatchback(ValueError):
 	"""Encountered unexpected Filler while matching back"""
 
+
+def comp_is_essence_mob(comp:avb.trackgroups.Composition):
+	"""Mob contains an essence descriptor"""
+
+	return "descriptor" in comp.property_data and isinstance(comp.descriptor, avb.essence.MediaDescriptor)
+
 def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tuple[avb.trackgroups.Composition, avb.trackgroups.Track, int]:
 
 	# Track contains a component that points to another mob
@@ -86,26 +92,28 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 		elif isinstance(comp.descriptor, avb.essence. NagraDescriptor):
 			print(f"SOUNDROLL MOB: {comp.name}")
 
-		elif isinstance(comp.descriptor, avb.essence.MediaDescriptor):
+		elif isinstance(comp.descriptor, avb.essence.MediaFileDescriptor):
 
-			if isinstance(comp.descriptor.locator, avb.misc.MSMLocator):
-				print(f"ESSENCE MOB: Avid media from {comp.descriptor.locator.last_known_volume_utf8}, MobID: {comp.descriptor.locator.mob_id}")
+			descriptors = comp.descriptor.descriptors if isinstance(comp.descriptor, avb.essence.MultiDescriptor) else [comp.descriptor]
 
-			elif isinstance(comp.descriptor.locator, avb.misc.FileLocator):
-				print(f"ESSENCE MOB: Source file name: {comp.name}")
-				print(f"ESSENCE MOB: Source file path: {comp.descriptor.locator.path_utf8}")
+			for descriptor in descriptors:
 
-			elif isinstance(comp.descriptor.locator, avb.misc.URLLocator):
-				raise NotImplementedError("Don't know what to do with avb.misc.URLLocator")
-			
-			else:
+				if isinstance(descriptor.locator, avb.misc.MSMLocator):
+					print(f"ESSENCE MOB: Avid media from {descriptor.locator.last_known_volume_utf8}, MobID: {descriptor.locator.mob_id}")
 
+				elif isinstance(descriptor.locator, avb.misc.FileLocator):
+					print(f"ESSENCE MOB: Source file name: {comp.name}")
+					print(f"ESSENCE MOB: Source file path: {descriptor.locator.path_utf8}")
 
-				print("**UNKNOWN**")
-				print(f"Descriptor: {comp.descriptor.property_data}")
-				print(f"Locator: {comp.descriptor.locator}")
-				for track in comp.tracks:
-					print(avbutils.format_track_label(track), track.component, f"({[c.property_data for c in track.component.components]})")
+				elif isinstance(comp.descriptor.locator, avb.misc.URLLocator):
+					raise NotImplementedError("Don't know what to do with avb.misc.URLLocator")
+				
+				else:
+					print("**UNKNOWN**")
+					print(f"Descriptor: {descriptor.property_data}")
+					print(f"Locator: {descriptor.locator}")
+					for track in comp.tracks:
+						print(avbutils.format_track_label(track), track.component, f"({[c.property_data for c in track.component.components]})")
 
 
 def resolve_from_comp_stack(comps:list[avb.trackgroups.Composition]):
