@@ -83,29 +83,51 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 		
 		if not comp.descriptor:
 			print("Master Mob:", comp.name)
-		else:
-			print(comp.descriptor)
+			continue
+		
+		# NOTE:
+		# AMA'd essence mobs seem to contain MultiDescriptor, which in turn has one essence descriptor (CDCI, PCMA, etc) per media track
+		# Each of those essence descriptors contain an MSMLocator which I thought was exclusively for Avid Media, but the difference 
+		# Is that the locator will have a `physical_media` ref, with a locator in THERE that points to a MacFileLocator or something
+		# Compared to traditional avid media which has no physical media ref in its MSMLocator
+		#
+		# So from what I can tell:
+		#
+		#     Hard-imported files:  Essence descriptor has generic MSMLocator
+		#                           Tape descriptor is generic MediaDescriptor with mac file locators
+		#
+		#             AMA'd files:  Essence descriptor has MultiDescriptor per essence; each essence is MSMLocator BUT with physical media locator
+		#                           Tape descriptor is generic MediaDescritptor with mac file locators (same as hard-import)
+		
+		descriptors = comp.descriptor.descriptors if isinstance(comp.descriptor, avb.essence.MultiDescriptor) else [comp.descriptor]
 
-		if isinstance(comp.descriptor, avb.essence.TapeDescriptor):
-			print(f"TAPE MOB: {comp.name}")
+		for descriptor in descriptors:
+			print("")
+			print(descriptor)
+ 
+			# TAPE MOB
+			if isinstance(descriptor, avb.essence.TapeDescriptor):
+				print(f"TAPE MOB: {comp.name}")
 
-		elif isinstance(comp.descriptor, avb.essence. NagraDescriptor):
-			print(f"SOUNDROLL MOB: {comp.name}")
+			# Soundroll Mob
+			elif isinstance(descriptor, avb.essence. NagraDescriptor):
+				print(f"SOUNDROLL MOB: {comp.name}")
 
-		elif isinstance(comp.descriptor, avb.essence.MediaFileDescriptor):
-
-			descriptors = comp.descriptor.descriptors if isinstance(comp.descriptor, avb.essence.MultiDescriptor) else [comp.descriptor]
-
-			for descriptor in descriptors:
+			# Essence Mob
+			elif isinstance(descriptor, avb.essence.MediaFileDescriptor):
 
 				if isinstance(descriptor.locator, avb.misc.MSMLocator):
 					print(f"ESSENCE MOB: Avid media from {descriptor.locator.last_known_volume_utf8}, MobID: {descriptor.locator.mob_id}")
+
+					if "physical_media" in descriptor.property_data and descriptor.physical_media:
+						print("* physical_media: ", descriptor.physical_media.property_data)
+						print("**loc:", descriptor.physical_media.locator.property_data)
 
 				elif isinstance(descriptor.locator, avb.misc.FileLocator):
 					print(f"ESSENCE MOB: Source file name: {comp.name}")
 					print(f"ESSENCE MOB: Source file path: {descriptor.locator.path_utf8}")
 
-				elif isinstance(comp.descriptor.locator, avb.misc.URLLocator):
+				elif isinstance(descriptor.locator, avb.misc.URLLocator):
 					raise NotImplementedError("Don't know what to do with avb.misc.URLLocator")
 				
 				else:
@@ -114,6 +136,14 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 					print(f"Locator: {descriptor.locator}")
 					for track in comp.tracks:
 						print(avbutils.format_track_label(track), track.component, f"({[c.property_data for c in track.component.components]})")
+			
+			# Other
+			# NOTE: File-based (AMA'd or hard imported) tend to terminate with a generic essence.MediaDescriptor, mob_kind==5, with a Locator to the file
+			else:
+				print("GENERIC MOB DESCRIPTOR:", descriptor)
+				print("property_data:", descriptor.property_data)
+				print("locator:", descriptor.locator.property_data)
+
 
 
 def resolve_from_comp_stack(comps:list[avb.trackgroups.Composition]):
@@ -175,7 +205,8 @@ def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
-	return bin_item.user_placed
+	return not avbutils.composition_is_timeline(bin_item.mob)
+	#return bin_item.user_placed and not avbutils.composition_is_timeline(bin_item.mob)
 	#return avbutils.composition_is_subclip(bin_item.mob) #and "/" in bin_item.mob.name
 	#return avbutils.composition_is_groupclip(bin_item.mob) #and "/" in bin_item.mob.name
 
@@ -195,8 +226,10 @@ if __name__ == "__main__":
 		import random
 
 		# Find valid comp and track for testing
-		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items))).mob
+		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
 
+	#	for test_clip in filter(is_valid_test_item, bin_handle.content.items):
+		test_clip = test_clip.mob
 		if isinstance(test_clip, avb.trackgroups.Selector):
 			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
 		else:
@@ -206,6 +239,8 @@ if __name__ == "__main__":
 		comps = trace_clip(test_clip, test_track, frame_offset=0)
 
 		inspect_comp_stack(comps)
+
+		
 
 		#for comp in comps:
 		#	print(comp.essence)
