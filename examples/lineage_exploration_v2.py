@@ -1,5 +1,21 @@
-import sys
+import sys, enum
 import avb, avbutils
+
+class MobDescriptorKind(enum.Enum):
+	"""
+	Kinds of descriptors, maps to the integer values from `avb.essence.MediaDescrirptor.mob_kind`
+	I might call this a "role" but whatever
+	"""
+
+	AVID_MEDIA  = 1
+	"""Traditional, managed OP-Atom MXF media essence"""
+	TAPE        = 2
+	"""Tape source"""
+	SOUNDROLL   = 4
+	"""Traditional soundroll source"""
+	SOURCE_FILE = 5
+	"""Imported file source"""
+
 
 class StopMatchback(StopIteration):
 	"""Track cannot be resolved further"""
@@ -27,6 +43,7 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 
 	if isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp):
 		# Unwrap TrackEffect
+		print("At effect:", component)
 		track = next(filter(lambda t: t.media_kind == track.media_kind and t.index == track.index, component.tracks))
 		component = track.component
 	
@@ -38,12 +55,15 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 		print("(Got filler)")
 		raise FillerDuringMatchback
 
-	if component.track_id == 0:
+	if isinstance(component, avb.components.SourceClip) and component.track_id == 0:
+		raise StopMatchback
+	
+	if isinstance(component, avb.components.Timecode):
 		raise StopMatchback
 
 	#offset += component.start_time
 
-	print("Offset: ", offset)
+	print("Offset: ", offset, "Track:", avbutils.format_track_label(track))
 
 
 	#print("Resolved", component)
@@ -93,14 +113,19 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 		#
 		# So from what I can tell:
 		#
-		#     Hard-imported files:  Essence descriptor has generic MSMLocator
+		#     Hard-imported files:  Essence descriptor has generic MSMLocator.  Note: Locator may be None or empty URLLocator??
 		#                           Source descriptor is generic MediaDescriptor with mac file locators
 		#
-		#             AMA'd files:  Essence descriptor has MultiDescriptor per essence; each essence is MSMLocator BUT with physical media locator
+		#             AMA'd files:  Essence descriptor has MultiDescriptor per essence; each essence is MSMLocator BUT with physical media FileLocator
 		#                           Source descriptor is generic MediaDescritptor with mac file locators (same as hard-import)
 		#
 		#       Traditional media:  Essence descriptor has generic MSMLocator
 		#                           Source descriptor is TapeDescriptor
+		#
+		#       Mixdowns, Renders:  Source descriptor is generic MediaDescriptor with no locator (locator=None)
+		
+		if isinstance(comp.descriptor, avb.essence.MultiDescriptor):
+			print(comp.descriptor, comp.descriptor.mob_kind)
 		
 		descriptors = comp.descriptor.descriptors if isinstance(comp.descriptor, avb.essence.MultiDescriptor) else [comp.descriptor]
 
@@ -145,7 +170,10 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 			else:
 				print("GENERIC MOB DESCRIPTOR:", descriptor)
 				print("property_data:", descriptor.property_data)
-				print("locator:", descriptor.locator.property_data)
+				if "locator" in descriptor.property_data and descriptor.locator:
+					print("locator:", descriptor.locator.property_data)
+				else:
+					print("(No Locator)")
 
 
 
@@ -204,8 +232,9 @@ def trace_clip(composition:avb.trackgroups.Composition, track:avb.trackgroups.Tr
 		
 	
 def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
-	return True
-	#return avbutils.TrackTypes.from_track(track) in (avbutils.TrackTypes.PICTURE, avbutils.TrackTypes.SOUND)
+	#return True
+	#return avbutils.TrackTypes.from_track(track) == avbutils.TrackTypes.TIMECODE
+	return avbutils.TrackTypes.from_track(track) in (avbutils.TrackTypes.PICTURE, avbutils.TrackTypes.SOUND)
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
@@ -230,19 +259,19 @@ if __name__ == "__main__":
 		import random
 
 		# Find valid comp and track for testing
-		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
+		#test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
 
-	#	for test_clip in filter(is_valid_test_item, bin_handle.content.items):
-		test_clip = test_clip.mob
-		if isinstance(test_clip, avb.trackgroups.Selector):
-			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
-		else:
-			test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
-		
-		#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
-		comps = trace_clip(test_clip, test_track, frame_offset=0)
+		for test_clip in filter(is_valid_test_item, bin_handle.content.items):
+			test_clip = test_clip.mob
+			if isinstance(test_clip, avb.trackgroups.Selector):
+				test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
+			else:
+				test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
+			
+			#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
+			comps = trace_clip(test_clip, test_track, frame_offset=0)
 
-		inspect_comp_stack(comps)
+			inspect_comp_stack(comps)
 
 		
 
