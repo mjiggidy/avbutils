@@ -94,16 +94,19 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 		# So from what I can tell:
 		#
 		#     Hard-imported files:  Essence descriptor has generic MSMLocator
-		#                           Tape descriptor is generic MediaDescriptor with mac file locators
+		#                           Source descriptor is generic MediaDescriptor with mac file locators
 		#
 		#             AMA'd files:  Essence descriptor has MultiDescriptor per essence; each essence is MSMLocator BUT with physical media locator
-		#                           Tape descriptor is generic MediaDescritptor with mac file locators (same as hard-import)
+		#                           Source descriptor is generic MediaDescritptor with mac file locators (same as hard-import)
+		#
+		#       Traditional media:  Essence descriptor has generic MSMLocator
+		#                           Source descriptor is TapeDescriptor
 		
 		descriptors = comp.descriptor.descriptors if isinstance(comp.descriptor, avb.essence.MultiDescriptor) else [comp.descriptor]
 
 		for descriptor in descriptors:
 			print("")
-			print(descriptor)
+			print(descriptor, descriptor.mob_kind)
  
 			# TAPE MOB
 			if isinstance(descriptor, avb.essence.TapeDescriptor):
@@ -201,7 +204,8 @@ def trace_clip(composition:avb.trackgroups.Composition, track:avb.trackgroups.Tr
 		
 	
 def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
-	return avbutils.TrackTypes.from_track(track) in (avbutils.TrackTypes.PICTURE, avbutils.TrackTypes.SOUND)
+	return True
+	#return avbutils.TrackTypes.from_track(track) in (avbutils.TrackTypes.PICTURE, avbutils.TrackTypes.SOUND)
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
@@ -233,7 +237,7 @@ if __name__ == "__main__":
 		if isinstance(test_clip, avb.trackgroups.Selector):
 			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
 		else:
-			test_track = next(filter(is_valid_test_track, test_clip.tracks))
+			test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
 		
 		#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
 		comps = trace_clip(test_clip, test_track, frame_offset=0)
