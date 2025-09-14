@@ -98,36 +98,112 @@ class MobStack:
 	def __init__(self, mob_stack:list[avb.trackgroups.Composition]):
 
 		self._stack = mob_stack
-
+	
 	@property
-	def source_type(self):
+	def source_name(self):
 		"""Identify"""
 		
 		# Traditional media
-		for source_mob in reversed(list(self.source_mobs)):
+		for source_mob in reversed(self.source_mobs):
 			
 			# Skip essences
 			if isinstance(source_mob.descriptor, avb.essence.MediaFileDescriptor):
 				continue
 
-			if isinstance(source_mob.descriptor, avb.essence.TapeDescriptor):
-				return "Tape: " + source_mob.name
-			
 			elif isinstance(source_mob.descriptor, avb.essence.NagraDescriptor):
 				return "Soundroll: " + source_mob.name
+
+			if isinstance(source_mob.descriptor, avb.essence.TapeDescriptor):
+				return "Tape: " + source_mob.name
 			
 			elif isinstance(source_mob.descriptor, avb.essence.MediaDescriptor) and \
 			  isinstance(source_mob.descriptor.locator, avb.misc.FileLocator):
 				return"Source file: " + source_mob.name + f" ({source_mob.descriptor.locator.path_utf8})"
 			
-		raise ValueError("Unknown source type")
+			else:
+				print("Signature Source Mob")
+	
+	@property
+	def has_managed_media(self) -> bool:
+
+		desc = self.essence_descriptor
+
+		if isinstance(desc, avb.essence.MultiDescriptor):
+			desc = desc.descriptors
+		else:
+			desc = [desc]
+		
+		for d in desc:
+			if isinstance(d.locator, avb.misc.MSMLocator) and (d.physical_media is None or isinstance(d.physical_media.locator, avb.misc.URLLocator)):
+				return True
+		
+		return False
+			
+	@property
+	def has_linked_media(self) -> bool:
+
+		desc = self.essence_descriptor
+
+		if isinstance(desc, avb.essence.MultiDescriptor):
+			desc = desc.descriptors
+		else:
+			desc = [desc]
+		
+		for d in desc:
+			if isinstance(d.locator, avb.misc.MSMLocator) and isinstance(d.physical_media.locator, avb.misc.FileLocator):
+				return True
+		
+		return False
+	
+	@property
+	def essence_descriptor(self) -> avb.essence.MediaDescriptor:
+
+		desc = self.source_mobs[0].descriptor
+
+		if not isinstance(desc, avb.essence.MediaFileDescriptor):
+			raise ValueError("Did not find expected essence descriptor")
+		
+		return desc
+		
+
+	
+	@property
+	def link_type(self):
+		
+		print(self.source_mobs[0])
+
+		if self.source_name.startswith("Tape"):
+			return "Managed Media from "+ self.source_name
+		
+		elif self.source_name.startswith("Source file"):
+			if isinstance(self.source_mobs[0].descriptor.locator, avb.misc.FileLocator) or \
+			  isinstance(self.source_mobs[0].descriptor, avb.essence.MultiDescriptor) and \
+			    all(isinstance(d, avb.misc.FileLocator) for d in self.source_mobs[0].descriptor.descriptors):
+				return "UME Linked from "+ self.source_name
+		
+			elif isinstance(self.source_mobs[-1].descriptor.locator, avb.misc.FileLocator):
+				return "Hard Imported from "+ self.source_name
+			
+			else:
+				raise ValueError("Unknown file link type")
+		
+		# NOTE: Obvious bounds issues here
+		elif self.source_name.startswith("Soundroll"):
+			if isinstance(self.source_mobs[-2].descriptor.locator, avb.misc.FileLocator):
+				return "Hard Imported from "+ self.source_name
+			else:
+				return "Mysterious sound roll import from " + self.source_name
+		
+		else:
+			raise ValueError("Unknown link type")
+
 
 
 
 	
 	@property
-	def source_mobs(self) -> typing.Iterator[avb.trackgroups.Composition]:
-		yield from filter(avbutils.composition_is_source_mob, self._stack)
+	def source_mobs(self) -> list[avb.trackgroups.Composition]:
+		return list(filter(avbutils.composition_is_source_mob, self._stack))
 
 
 
@@ -182,10 +258,12 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 			# TAPE MOB
 			if isinstance(descriptor, avb.essence.TapeDescriptor):
 				print(f"TAPE MOB: {comp.name}")
+				print(descriptor.locator)
 
 			# Soundroll Mob
 			elif isinstance(descriptor, avb.essence.NagraDescriptor):
 				print(f"SOUNDROLL MOB: {comp.name}")
+				print(descriptor.property_data)
 
 			# Essence Mob
 			elif isinstance(descriptor, avb.essence.MediaFileDescriptor):
@@ -196,6 +274,9 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 					if "physical_media" in descriptor.property_data and descriptor.physical_media:
 						print("* physical_media: ", descriptor.physical_media.property_data)
 						print("*loc:", descriptor.physical_media.locator.property_data)
+
+					if descriptor.locator:
+						print("loc:", descriptor.locator.property_data)
 
 				elif isinstance(descriptor.locator, avb.misc.FileLocator):
 					print(f"ESSENCE MOB: Source file name: {comp.name}")
@@ -320,8 +401,15 @@ if __name__ == "__main__":
 
 		inspect_comp_stack(comps)
 
+		print("")
 		print("--- Identify Source --")
-		print(MobStack(comps).source_type)
+		print(MobStack(comps).source_name)
+
+		print("")
+		print("--- Identify link ---")
+		print(MobStack(comps).link_type)
+		print("Has linked media:", MobStack(comps).has_linked_media)
+		print("Has managed media:", MobStack(comps).has_managed_media)
 
 		
 
