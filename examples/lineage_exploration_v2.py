@@ -1,4 +1,4 @@
-import sys, enum
+import sys, enum, typing
 import avb, avbutils
 
 class MobDescriptorKind(enum.Enum):
@@ -44,7 +44,17 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	if isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp):
 		# Unwrap TrackEffect
 		print("At effect:", component)
-		track = next(filter(lambda t: t.media_kind == track.media_kind and t.index == track.index, component.tracks))
+		print("Parent track: ",track.property_data)
+		print("Parent track kind:", track.media_kind, track.index)
+		print("Component:", component.property_data)
+		for t in component.tracks:
+			print(" - ", t.component, t.media_kind, t.index)
+		
+		#track = next(filter(lambda t: t.media_kind == track.media_kind and t.index == track.index, component.tracks))
+		# NOTE:  ^^^ I Feel like this up here is the way to go, but PVOL, for example, has a child track that's always index=1
+
+		track = next(filter(lambda t: t.media_kind == track.media_kind, component.tracks))
+		
 		component = track.component
 	
 	if isinstance(component, avb.components.Sequence):
@@ -82,6 +92,42 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	return resolved_mob, resolved_track, component.start_time
 
 
+class MobStack:
+	"""Stack of resolved mobs"""
+
+	def __init__(self, mob_stack:list[avb.trackgroups.Composition]):
+
+		self._stack = mob_stack
+
+	@property
+	def source_type(self):
+		"""Identify"""
+		
+		# Traditional media
+		for source_mob in reversed(list(self.source_mobs)):
+			
+			# Skip essences
+			if isinstance(source_mob.descriptor, avb.essence.MediaFileDescriptor):
+				continue
+
+			if isinstance(source_mob.descriptor, avb.essence.TapeDescriptor):
+				return "Tape: " + source_mob.name
+			
+			elif isinstance(source_mob.descriptor, avb.essence.NagraDescriptor):
+				return "Soundroll: " + source_mob.name
+			
+			elif isinstance(source_mob.descriptor, avb.essence.MediaDescriptor) and \
+			  isinstance(source_mob.descriptor.locator, avb.misc.FileLocator):
+				return"Source file: " + source_mob.name + f" ({source_mob.descriptor.locator.path_utf8})"
+			
+		raise ValueError("Unknown source type")
+
+
+
+	
+	@property
+	def source_mobs(self) -> typing.Iterator[avb.trackgroups.Composition]:
+		yield from filter(avbutils.composition_is_source_mob, self._stack)
 
 
 
@@ -138,7 +184,7 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 				print(f"TAPE MOB: {comp.name}")
 
 			# Soundroll Mob
-			elif isinstance(descriptor, avb.essence. NagraDescriptor):
+			elif isinstance(descriptor, avb.essence.NagraDescriptor):
 				print(f"SOUNDROLL MOB: {comp.name}")
 
 			# Essence Mob
@@ -149,7 +195,7 @@ def inspect_comp_stack(comps:list[avb.trackgroups.Composition]):
 
 					if "physical_media" in descriptor.property_data and descriptor.physical_media:
 						print("* physical_media: ", descriptor.physical_media.property_data)
-						print("**loc:", descriptor.physical_media.locator.property_data)
+						print("*loc:", descriptor.physical_media.locator.property_data)
 
 				elif isinstance(descriptor.locator, avb.misc.FileLocator):
 					print(f"ESSENCE MOB: Source file name: {comp.name}")
@@ -238,7 +284,8 @@ def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
-	return not avbutils.composition_is_timeline(bin_item.mob)
+	#return not avbutils.composition_is_timeline(bin_item.mob)
+	return avbutils.composition_is_masterclip(bin_item.mob)
 	#return bin_item.user_placed and not avbutils.composition_is_timeline(bin_item.mob)
 	#return avbutils.composition_is_subclip(bin_item.mob) #and "/" in bin_item.mob.name
 	#return avbutils.composition_is_groupclip(bin_item.mob) #and "/" in bin_item.mob.name
@@ -259,19 +306,22 @@ if __name__ == "__main__":
 		import random
 
 		# Find valid comp and track for testing
-		#test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
+		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
 
-		for test_clip in filter(is_valid_test_item, bin_handle.content.items):
-			test_clip = test_clip.mob
-			if isinstance(test_clip, avb.trackgroups.Selector):
-				test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
-			else:
-				test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
-			
-			#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
-			comps = trace_clip(test_clip, test_track, frame_offset=0)
+		#for test_clip in filter(is_valid_test_item, bin_handle.content.items):
+		test_clip = test_clip.mob
+		if isinstance(test_clip, avb.trackgroups.Selector):
+			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
+		else:
+			test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
+		
+		#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
+		comps = trace_clip(test_clip, test_track, frame_offset=0)
 
-			inspect_comp_stack(comps)
+		inspect_comp_stack(comps)
+
+		print("--- Identify Source --")
+		print(MobStack(comps).source_type)
 
 		
 
