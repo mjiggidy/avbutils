@@ -150,7 +150,7 @@ class MobStack:
 			desc = [desc]
 		
 		for d in desc:
-			if isinstance(d.locator, avb.misc.MSMLocator) and isinstance(d.physical_media.locator, avb.misc.FileLocator):
+			if isinstance(d.locator, avb.misc.MSMLocator) and d.physical_media and isinstance(d.physical_media.locator, avb.misc.FileLocator):
 				return True
 		
 		return False
@@ -172,7 +172,7 @@ class MobStack:
 		
 		print(self.source_mobs[0])
 
-		if self.source_name.startswith("Tape"):
+		if self.source_name.startswith("Tape") or self.source_name.startswith("Signature"):
 			return "Managed Media from "+ self.source_name
 		
 		elif self.source_name.startswith("Source file"):
