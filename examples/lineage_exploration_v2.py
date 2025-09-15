@@ -1,20 +1,38 @@
 import sys, enum, typing
 import avb, avbutils
 
-class MobDescriptorKind(enum.Enum):
+class SourceMobRole(enum.Enum):
 	"""
 	Kinds of descriptors, maps to the integer values from `avb.essence.MediaDescrirptor.mob_kind`
 	I might call this a "role" but whatever
 	"""
 
-	AVID_MEDIA  = 1
+	ESSENCE  = 1
 	"""Traditional, managed OP-Atom MXF media essence"""
 	TAPE        = 2
 	"""Tape source"""
+	FILM        = 3
+	"""Film source"""
 	SOUNDROLL   = 4
 	"""Traditional soundroll source"""
 	SOURCE_FILE = 5
 	"""Imported file source"""
+
+	@classmethod
+	def from_composition(cls, comp: avb.trackgroups.Composition) -> "SourceMobRole":
+		
+		if avbutils.MobTypes.from_composition(comp) != avbutils.MobTypes.SOURCE_MOB or comp.descriptor is None:
+			raise ValueError("Composition does not appear to be a source mob")
+		
+		return cls.from_descriptor(comp.descriptor)
+	
+	@classmethod
+	def from_descriptor(cls, descriptor:avb.essence.MediaDescriptor) -> "SourceMobRole":
+		return cls(descriptor.mob_kind)
+	
+	def __str__(self) -> str:
+		return self.name.replace("_"," ").title()
+
 
 
 class StopMatchback(StopIteration):
@@ -104,27 +122,11 @@ class MobStack:
 		"""Identify"""
 		
 		# Traditional media
-		for source_mob in reversed(self.source_mobs):
-			
-			# Skip essences
-			if isinstance(source_mob.descriptor, avb.essence.MediaFileDescriptor):
-				continue
-
-			elif isinstance(source_mob.descriptor, avb.essence.NagraDescriptor):
-				return "Soundroll: " + source_mob.name
-
-			if isinstance(source_mob.descriptor, avb.essence.TapeDescriptor):
-				return "Tape: " + source_mob.name
-			
-			elif isinstance(source_mob.descriptor, avb.essence.MediaDescriptor) and \
-			  isinstance(source_mob.descriptor.locator, avb.misc.FileLocator):
-				return"Source file: " + source_mob.name + f" ({source_mob.descriptor.locator.path_utf8})"
-			
-			else:
-				print("Signature Source Mob")
+		return self.source_mobs[-1].name
 	
 	@property
 	def has_managed_media(self) -> bool:
+		"""Does this mob reference managed media"""
 
 		desc = self.essence_descriptor
 
@@ -141,6 +143,7 @@ class MobStack:
 			
 	@property
 	def has_linked_media(self) -> bool:
+		"""Does this mob reference UME-linked media"""
 
 		desc = self.essence_descriptor
 
@@ -167,8 +170,51 @@ class MobStack:
 		
 
 	
+	@staticmethod
+	def _descriptor_has_file_reference(descriptor: avb.essence.MediaDescriptor) -> bool:
+
+		if isinstance(descriptor, avb.essence.MultiDescriptor):
+			descriptors = descriptor.descriptors
+		
+		else:
+			descriptors = [descriptor]
+
+		for d in descriptors:
+			
+			if isinstance(d.locator, avb.misc.FileLocator):
+				return True
+			elif d.physical_media and isinstance(d.physical_media.locator, avb.misc.FileLocator):
+				return True
+		return False
+
 	@property
 	def link_type(self):
+
+		essence_mob = self.source_mobs[0]
+		mob_role = SourceMobRole.from_composition(essence_mob)
+
+		if not mob_role == SourceMobRole.ESSENCE:
+			raise ValueError(f"Not an essence mob")
+		
+		essence_has_file_reference = self._descriptor_has_file_reference(essence_mob.descriptor)
+
+		source_has_file_reference  = (SourceMobRole.from_composition(self.source_mobs[1]) == SourceMobRole.SOURCE_FILE) and \
+		  self._descriptor_has_file_reference(self.source_mobs[1].descriptor)
+
+		if essence_has_file_reference and source_has_file_reference:
+			return "UME Linked"
+		
+		elif source_has_file_reference:
+			return "Hard Imported"
+		
+		elif essence_has_file_reference:
+			raise ValueError("Essence references file but source does not")
+		
+		else:
+			return "Managed media"
+
+
+
 		
 		print(self.source_mobs[0])
 
