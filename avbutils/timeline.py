@@ -12,6 +12,7 @@ class TrackTypes(enum.Enum):
 	SOUND    = "sound"
 	TIMECODE = "timecode"
 	EDGECODE = "edgecode"
+	DATA_ESSENCE = "DataEssenceTrack" # TODO: Investigate
 
 	@classmethod
 	def from_track(cls, track:avb.trackgroups.Track) -> "TrackTypes":
@@ -105,8 +106,6 @@ def get_tracks_from_composition(composition:avb.trackgroups.Composition, type:Tr
 def get_timecode_range_for_composition(composition:avb.trackgroups.Composition) -> TimecodeRange:
 	"""Get a `TimecodeRange` representing the timecode extents of this composition"""
 
-	edit_rate = composition.edit_rate
-
 	# TODO: I'm not yet confident index=1 will always be a Timecode component, or one matching the edit rate
 	# TODO: So... let's see if we run into any problems
 	
@@ -125,7 +124,7 @@ def get_timecode_range_for_composition(composition:avb.trackgroups.Composition) 
 		raise ValueError(f"Timecode track 1 is not a Timecode component: {timecode_component}")
 
 	if not timecode_component.edit_rate == composition.edit_rate:
-		raise ValueError(f"Timecode track 1 does not match the composition's edit rate: TC {timecode_component.edit_rate} vs Composition {timecode_component.edit_rate}")
+		raise ValueError(f"Timecode track 1 does not match the composition's edit rate: TC {timecode_component.edit_rate} fps vs Composition {composition.edit_rate} fps")
 	
 	return TimecodeRange(
 		start=Timecode(timecode_component.start, rate=round(timecode_component.edit_rate)),
