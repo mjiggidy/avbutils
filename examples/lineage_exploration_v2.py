@@ -55,18 +55,16 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 	
 	component = track.component
 
-	if isinstance(component, avb.trackgroups.Selector):
-		#print(component)
-		component = next(t for t in avbutils.get_tracks_from_composition(component, avbutils.TrackTypes.PICTURE, component.selected)).component
 
-	if isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp):
+
+	if isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp) or isinstance(component, avb.trackgroups.TransitionEffect):
 		# Unwrap TrackEffect
-		print("At effect:", component)
-		print("Parent track: ",track.property_data)
-		print("Parent track kind:", track.media_kind, track.index)
-		print("Component:", component.property_data)
-		for t in component.tracks:
-			print(" - ", t.component, t.media_kind, t.index)
+		#print("At effect:", component)
+		#print("Parent track: ",track.property_data)
+		#print("Parent track kind:", track.media_kind, track.index)
+		#print("Component:", component.property_data)
+		#for t in component.tracks:
+		#	print(" - ", t.component, t.media_kind, t.index)
 		
 		#track = next(filter(lambda t: t.media_kind == track.media_kind and t.index == track.index, component.tracks))
 		# NOTE:  ^^^ I Feel like this up here is the way to go, but PVOL, for example, has a child track that's always index=1
@@ -79,8 +77,12 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 		component, component_offset = track.component.nearest_component_at_time(offset)
 		# NOTE: What to do about component_offset? ...add to offset or something?
 
+	if isinstance(component, avb.trackgroups.Selector):
+		#print(component)
+		component = next(t for t in avbutils.get_tracks_from_composition(component, avbutils.TrackTypes.PICTURE, component.selected)).component
+
 	if isinstance(component, avb.components.Filler):
-		print("(Got filler)")
+		#print("(Got filler)")
 		raise FillerDuringMatchback
 
 	if isinstance(component, avb.components.SourceClip) and component.track_id == 0:
@@ -90,13 +92,16 @@ def get_mob_from_track_at_offset(track:avb.trackgroups.Track, offset:int) -> tup
 		raise StopMatchback
 
 	#offset += component.start_time
-
-	print("Offset: ", offset, "Track:", avbutils.format_track_label(track))
+	#print("Hi I'm here at ", track.property_data)
+	#print("Offset: ", offset, "Track:", avbutils.format_track_label(track))
 
 
 	#print("Resolved", component)
 	#print(component.start_time)
 	#print(component.property_data)
+
+	if isinstance(component, avb.trackgroups.TransitionEffect):
+		exit("FUCK YOU HOW")
 
 	resolved_mob = track.root.content.find_by_mob_id(component.mob_id)
 	resolved_track = next(t for t in resolved_mob.tracks if t.media_kind == track.media_kind and t.index == component.track_id)
@@ -186,6 +191,17 @@ class MobStack:
 			elif d.physical_media and isinstance(d.physical_media.locator, avb.misc.FileLocator):
 				return True
 		return False
+	
+	@property
+	def source_type(self) -> SourceMobRole:
+
+		source_mob = self._stack[-1]
+		source_type = SourceMobRole.from_composition(source_mob)
+
+		if source_type == SourceMobRole.ESSENCE:
+			raise ValueError("No physical source found")
+		
+		return source_type
 
 	@property
 	def link_type(self):
@@ -380,10 +396,10 @@ def print_timecode_track(track:avb.trackgroups.Track):
 
 def trace_clip(composition:avb.trackgroups.Composition, track:avb.trackgroups.Track, frame_offset:int) -> list[avb.trackgroups.Composition]:
 
-	print("---")
-	print(f"{composition.name} is a {avbutils.MobTypes.from_composition(composition)} from {bin_handle.f.name}")
-	print(f"Matching back from track {avbutils.format_track_label(track)} with frame offset {frame_offset}")
-	print("---")
+	#print("---")
+	#print(f"{composition.name} is a {avbutils.MobTypes.from_composition(composition)} from {bin_handle.f.name}")
+	#print(f"Matching back from track {avbutils.format_track_label(track)} with frame offset {frame_offset}")
+	#print("---")
 
 	comps = []
 
@@ -393,7 +409,7 @@ def trace_clip(composition:avb.trackgroups.Composition, track:avb.trackgroups.Tr
 		comps.append(composition)
 		try:
 			#print(frame_offset)
-			print(f"Looking up new offset {frame_offset + last_component_offset}")
+			#print(f"Looking up new offset {frame_offset + last_component_offset}")
 			composition, track, last_component_offset = get_mob_from_track_at_offset(track, frame_offset + last_component_offset+1) # NOTE: WHY THE +1 NEEDED ARGH
 		except StopMatchback:
 			break
@@ -411,8 +427,11 @@ def is_valid_test_track(track:avb.trackgroups.Track) -> bool:
 
 def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 	"""Filter for valid testing item"""
+	#return avbutils.composition_is_masterclip(bin_item.mob) and "picture" in (t.media_kind for t in bin_item.mob.tracks)
+	#ret
+	return not avbutils.composition_is_timeline(bin_item.mob)
 	#return not avbutils.composition_is_timeline(bin_item.mob)
-	return avbutils.composition_is_masterclip(bin_item.mob)
+	#return avbutils.composition_is_groupclip(bin_item.mob)
 	#return bin_item.user_placed and not avbutils.composition_is_timeline(bin_item.mob)
 	#return avbutils.composition_is_subclip(bin_item.mob) #and "/" in bin_item.mob.name
 	#return avbutils.composition_is_groupclip(bin_item.mob) #and "/" in bin_item.mob.name
@@ -433,29 +452,49 @@ if __name__ == "__main__":
 		import random
 
 		# Find valid comp and track for testing
-		test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
+		#test_clip  = random.choice(list(filter(is_valid_test_item, bin_handle.content.items)))
 
-		#for test_clip in filter(is_valid_test_item, bin_handle.content.items):
-		test_clip = test_clip.mob
-		if isinstance(test_clip, avb.trackgroups.Selector):
-			test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
-		else:
-			test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
+		for test_clip in filter(is_valid_test_item, bin_handle.content.items):
+			test_clip = test_clip.mob
+			while isinstance(test_clip, avb.trackgroups.Selector):
+				test_track = next(t for t in test_clip.tracks if t.media_kind == "picture" and t.index == test_clip.selected)
+			
+			
+			# DO EVERY TRACK
+			print(f"{test_clip.name} ({avbutils.format_track_labels(test_clip.tracks)}) from {test_clip.root.f.name}")
+
+			for track in test_clip.tracks:
+				try:
+					comps = trace_clip(test_clip, track, frame_offset=0)
+				except:
+					continue
+				mob_stack = MobStack(comps)
+				print(f"{avbutils.format_track_label(track)}: {mob_stack.source_type}: {mob_stack.source_name}")
+			print("--")
+
+
+
+			
+		exit()
+		
+		test_track = random.choice(list(filter(is_valid_test_track, test_clip.tracks)))
 		
 		#comps = trace_clip(test_clip, test_track, frame_offset=min(2400, test_clip.length-1))
 		comps = trace_clip(test_clip, test_track, frame_offset=0)
 
 		inspect_comp_stack(comps)
 
+		mob_stack = MobStack(comps)
+
 		print("")
 		print("--- Identify Source --")
-		print(MobStack(comps).source_name)
+		print(mob_stack.source_type, mob_stack.source_name)
 
 		print("")
 		print("--- Identify link ---")
-		print(MobStack(comps).link_type)
-		print("Has linked media:", MobStack(comps).has_linked_media)
-		print("Has managed media:", MobStack(comps).has_managed_media)
+		print(mob_stack.link_type)
+		print("Has linked media:", mob_stack.has_linked_media)
+		print("Has managed media:", mob_stack.has_managed_media)
 
 		
 
