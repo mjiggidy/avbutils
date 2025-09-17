@@ -16,13 +16,15 @@ class TrackTypes(enum.Enum):
 
 	@classmethod
 	def from_track(cls, track:avb.trackgroups.Track) -> "TrackTypes":
+		"""Get the track type for a given Track"""
+
 		return cls(track.media_kind)
 	
 	@classmethod
 	def prefixes(cls) -> dict["TrackTypes", str]:
 		"""Return prefix"""
 
-		prefixes = {
+		return {
 			cls.PICTURE:      "V",
 			cls.SOUND:        "A",
 			cls.TIMECODE:     "TC",
@@ -33,7 +35,7 @@ class TrackTypes(enum.Enum):
 	def prefix(self) -> str:
 		"""Get the prefix for this track type, for use with track labels"""
 
-		return self.prefixes(self)
+		return self.prefixes()[self]
 
 def format_track_label(track:avb.trackgroups.Track) -> str:
 	# TODO: Integrate this into that there `TrackTypes` enum maybe or something?
