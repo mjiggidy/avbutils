@@ -31,8 +31,8 @@ import avb, avbutils
 def get_component_from_track(trackgroup:avb.trackgroups.TrackGroup, track:avb.trackgroups.Track, offset:int=0) -> avb.components.Component:
 	"""Resolve the component"""
 
+
 	if track not in trackgroup.tracks:
-		print(avbutils.format_track_labels(trackgroup.tracks))
 		raise ValueError(f"Track {avbutils.format_track_label(track)} not in composition")
 	
 	component = track.component
@@ -63,7 +63,8 @@ def resolve_mob(composition:avb.trackgroups.Composition, track:avb.trackgroups.T
 	"""Get next mob in the chain, and the frame offset in that mob's edit rate"""
 
 	if not offset < composition.length:
-		raise ValueError(f"Offset ({offset}) cannot be greater than the composition length ({composition.length})")
+		pass
+		#raise ValueError(f"Offset ({offset}) cannot be greater than the composition length ({composition.length})")
 	
 	try:
 		component = get_component_from_track(composition, track, offset)
@@ -91,8 +92,8 @@ def resolve_mob(composition:avb.trackgroups.Composition, track:avb.trackgroups.T
 	# SourceClip.start_time refers to the "parent" mob edit units (the one from which we're resolving).
 	# Once a mob is resolved from the SourceClip, convert everything to the resolved mob's edit units
 	# NOTE: Verify rounding is the way to go here
-	offset = offset + component.start_time
-	#offset = round((offset + component.start_time) * (resolved_mob.edit_rate / composition.edit_rate))
+	#offset = offset + component.start_time
+	offset = round((offset + component.start_time) * (resolved_mob.edit_rate / composition.edit_rate))
 
 	return resolved_mob, resolved_track, offset
 	
@@ -104,24 +105,64 @@ def resolve_mob(composition:avb.trackgroups.Composition, track:avb.trackgroups.T
 ###########
 ###########
 ###########
+
+import dataclasses
+
+
+@dataclasses.dataclass(frozen=True)
+class MobStack:
+	stack: list[avb.trackgroups.Composition]
+
+@dataclasses.dataclass(frozen=True)
+class MasterclipStack:
+
+	mastermob:avb.trackgroups.Composition
+	tracks:dict[avb.trackgroups.Track, MobStack]
+
+
 	
 def process_bin(bin_path:PathLike):
 	
 	with avb.open(bin_path) as bin_handle:
 
+		mob_stack:list[MasterclipStack] = []
+
 		for bin_item in filter(bin_item_is_masterclip, bin_handle.content.items):
 		#	print(bin_item.mob.usage_code, avbutils.format_track_labels(bin_item.mob.tracks), "\t", bin_item.mob.name))
-			mob = bin_item.mob
+			test_mob = bin_item.mob
 			offset = 0
-			track=next(iter(mob.tracks))
-			while True:
-				print(avbutils.format_track_label(track),mob, offset, mob.edit_rate)
-				try:
-					mob,track,offset = resolve_mob(mob, track, offset)
-				except StopIteration:
-					break
+#			track=next(iter(mob.tracks))
 
-			print("")
+			mobs_per_track:dict[avb.trackgroups.Track, MobStack] = dict()
+
+			print(test_mob.name, f"({avbutils.format_track_labels(test_mob.tracks)})")
+
+			for test_track in test_mob.tracks:
+				new_mob = test_mob
+				new_track = test_track
+				resolved_mobs = list()
+				while True:
+					print("  - ", avbutils.format_track_label(new_track),new_mob, offset, new_mob.edit_rate, f"({avbutils.format_track_labels(new_mob.tracks)})")
+					try:
+						new_mob, new_track,offset = resolve_mob(new_mob, new_track, offset)
+					except StopIteration:
+						break
+					else:
+						resolved_mobs.append(new_mob)
+				
+				if resolved_mobs:
+					mobs_per_track[test_track]=MobStack(resolved_mobs)
+				
+			if mobs_per_track:
+				mob_stack.append(MasterclipStack(
+					mastermob=test_mob,
+					tracks=mobs_per_track
+				))
+				
+
+				print("")
+			
+			print(mob_stack)
 			#exit()
 
 
