@@ -17,20 +17,36 @@ class TrackTypes(enum.Enum):
 	@classmethod
 	def from_track(cls, track:avb.trackgroups.Track) -> "TrackTypes":
 		return cls(track.media_kind)
+	
+	@classmethod
+	def prefixes(cls) -> dict["TrackTypes", str]:
+		"""Return prefix"""
+
+		prefixes = {
+			cls.PICTURE:      "V",
+			cls.SOUND:        "A",
+			cls.TIMECODE:     "TC",
+			cls.EDGECODE:     "EC",
+			cls.DATA_ESSENCE: "D",
+		}
+	
+	def prefix(self) -> str:
+		"""Get the prefix for this track type, for use with track labels"""
+
+		return self.prefixes(self)
 
 def format_track_label(track:avb.trackgroups.Track) -> str:
-	# TODO: Integrate this into that there `TrackTypes` enum maybe or something
+	# TODO: Integrate this into that there `TrackTypes` enum maybe or something?
 
-	if track.media_kind == "picture":
-		return "V" + str(track.index)
-	elif track.media_kind == "sound":
-		return "A" + str(track.index)
-	elif track.media_kind == "timecode":
-		return "TC" + str(track.index)
-	elif track.media_kind == "edgecode":
-		return "EC" + str(track.index)
-	else:
-		return track.media_kind + (str(track.index) if "index" in track.propertydefs else "")
+	try:
+		track_index = track.index
+	except AttributeError:
+		track_index = 0
+
+	try:
+		return TrackTypes.from_track(track).prefix() + str(track_index)
+	except KeyError:
+		return track.media_kind + (str(track_index) if "index" in track.property_data else "")
 	
 def format_track_labels(tracks:list[avb.trackgroups.Track]) -> str:
 	"""Format mutliple track types for bin display (eg V1 A1-3,5-7 TC1-8 EC1)"""
