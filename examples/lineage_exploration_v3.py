@@ -69,11 +69,11 @@ def resolve_mob(composition:avb.trackgroups.Composition, track:avb.trackgroups.T
 	try:
 		component = get_component_from_track(composition, track, offset)
 	except Exception as e:
-		print("JRG",e)
+#		print("JRG",e)
 		exit()
 
 	if not isinstance(component, avb.components.SourceClip):
-		print("Got", component)
+#		print("Got", component)
 		raise StopIteration
 	elif component.mob_id.Data1 == 0:
 		#print("Component references", component.mob_id.Data1)
@@ -99,25 +99,139 @@ def resolve_mob(composition:avb.trackgroups.Composition, track:avb.trackgroups.T
 	
 	
 
+###########
+###########
+###########
+
+def analyze_masterclip_stack(stack:"MasterclipStack"):
+	"""Okay"""
+
+	
+	print(stack.mastermob.name, "is a", type(stack.mastermob).__name__, "with tracks", avbutils.format_track_labels(stack.mastermob.tracks))
+
+	track, track_stack = next(iter(stack.tracks.items()))
+	link_type = track_stack.link_type()
+	source_type = track_stack.source_type()
+	source_name = track_stack.source_name()
+
+	print(f"{avbutils.format_track_label(track)} is {link_type} media from {source_type} {source_name}")
+
+	latest_file_mob = next(track_stack.file_source_mobs())
+
+	if isinstance(latest_file_mob.descriptor.locator, avb.misc.MSMLocator):
+		print(f"It is imported to {latest_file_mob.descriptor.locator.last_known_volume_utf8}")
+	
+
+	#if link_type == "UME-linked":
+	#	exit()
+
+	#print(f"File mobs for {avbutils.format_track_label(track)}:")
+	#for fm in track_stack.file_source_mobs():
+#		print(" -", fm)
+	
+	#print(f"Physical mobs for {avbutils.format_track_label(track)}:")
+	#for sm in track_stack.physical_source_mobs():
+	#	print(" -", sm)
+
+
+
 
 
 
 ###########
 ###########
 ###########
+	
+
+def composition_is_file_source_mob(comp:avb.trackgroups.Composition) -> bool:
+
+	return avbutils.MobTypes.from_composition(comp) == avbutils.MobTypes.SOURCE_MOB and \
+	  isinstance(comp.descriptor, avb.essence.MediaFileDescriptor)
+
+def composition_is_physical_source_mob(comp:avb.trackgroups.Composition) -> bool:
+	
+	return avbutils.MobTypes.from_composition(comp) == avbutils.MobTypes.SOURCE_MOB and \
+	  not isinstance(comp.descriptor, avb.essence.MediaFileDescriptor)
 
 import dataclasses
 
 
 @dataclasses.dataclass(frozen=True)
-class MobStack:
+class TrackMobStack:
 	stack: list[avb.trackgroups.Composition]
+
+	def source_mobs(self) -> list[avb.trackgroups.Composition]:
+		"""Get source mobs for a given track"""
+
+		return self.stack
+	
+	def file_source_mobs(self) -> typing.Iterator[avb.trackgroups.Composition]:
+		return filter(composition_is_file_source_mob, self.stack)
+	
+	def physical_source_mobs(self) -> typing.Iterator[avb.trackgroups.Composition]:
+		return filter(composition_is_physical_source_mob, self.stack)
+
+	def link_type(self):
+		
+		latest_file_mob = next(self.file_source_mobs())
+
+		descriptors = []
+
+		# TODO: Need to unwrap MultiDescriptor locators better/recursively
+		# Fast for now
+		descriptor = latest_file_mob.descriptor
+		if isinstance(latest_file_mob.descriptor, avb.essence.MultiDescriptor):
+			for d in descriptor.descriptors:
+				descriptors.append(d)
+		
+		else:
+			descriptors.append(descriptor)
+
+		for d in descriptors:
+
+			# Considering linked if ANY are linked
+
+			if isinstance(d, avb.essence.MediaFileDescriptor) \
+			  and isinstance(d.locator, avb.misc.MSMLocator) \
+			  and isinstance(d.physical_media, avb.essence.MediaDescriptor) \
+			  and isinstance(d.physical_media.locator, avb.misc.FileLocator):
+				return "UME-linked"
+		else:
+			return "Managed"
+	
+	def source_type(self):
+
+
+		try:
+			oldest_physical_mob = list(self.physical_source_mobs())[-1]
+		except IndexError:
+			return "NONE??"
+
+
+		if "locator" in oldest_physical_mob.descriptor.property_data and isinstance(oldest_physical_mob.descriptor.locator, avb.misc.FileLocator):
+			return "Source File"
+		else:
+			return type(oldest_physical_mob.descriptor).__name__
+		
+	def source_name(self):
+
+		try:
+			oldest_physical_mob = list(self.physical_source_mobs())[-1]
+		except IndexError:
+			return "NONE????"
+		
+		if "locator" in oldest_physical_mob.descriptor.property_data and isinstance(oldest_physical_mob.descriptor.locator, avb.misc.FileLocator):
+			return oldest_physical_mob.descriptor.locator.path_utf8
+		else:
+			return oldest_physical_mob.name
+
 
 @dataclasses.dataclass(frozen=True)
 class MasterclipStack:
 
 	mastermob:avb.trackgroups.Composition
-	tracks:dict[avb.trackgroups.Track, MobStack]
+	tracks:dict[avb.trackgroups.Track, TrackMobStack]
+
 
 
 	
@@ -133,16 +247,16 @@ def process_bin(bin_path:PathLike):
 			offset = 0
 #			track=next(iter(mob.tracks))
 
-			mobs_per_track:dict[avb.trackgroups.Track, MobStack] = dict()
+			mobs_per_track:dict[avb.trackgroups.Track, TrackMobStack] = dict()
 
-			print(test_mob.name, f"({avbutils.format_track_labels(test_mob.tracks)})")
+#			print(test_mob.name, f"({avbutils.format_track_labels(test_mob.tracks)})")
 
 			for test_track in test_mob.tracks:
 				new_mob = test_mob
 				new_track = test_track
 				resolved_mobs = list()
 				while True:
-					print("  - ", avbutils.format_track_label(new_track),new_mob, offset, new_mob.edit_rate, f"({avbutils.format_track_labels(new_mob.tracks)})")
+#					print("  - ", avbutils.format_track_label(new_track),new_mob, offset, new_mob.edit_rate, f"({avbutils.format_track_labels(new_mob.tracks)})")
 					try:
 						new_mob, new_track,offset = resolve_mob(new_mob, new_track, offset)
 					except StopIteration:
@@ -151,7 +265,7 @@ def process_bin(bin_path:PathLike):
 						resolved_mobs.append(new_mob)
 				
 				if resolved_mobs:
-					mobs_per_track[test_track]=MobStack(resolved_mobs)
+					mobs_per_track[test_track]=TrackMobStack(resolved_mobs)
 				
 			if mobs_per_track:
 				mob_stack.append(MasterclipStack(
@@ -160,10 +274,11 @@ def process_bin(bin_path:PathLike):
 				))
 				
 
-				print("")
+#				print("")
 			
-			print(mob_stack)
-			#exit()
+			analyze_masterclip_stack(mob_stack[-1])
+			print("---")
+	
 
 
 
@@ -190,5 +305,7 @@ if __name__ == "__main__":
 		sys.exit(f"Usage: {pathlib.Path(__file__).name} bin_path.avb")
 	
 	for bin_path in get_bin_paths(sys.argv[1:]):
+		print(bin_path)
 		process_bin(bin_path)
+		exit()
 	
