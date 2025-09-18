@@ -86,7 +86,7 @@ def resolve_mob(composition:avb.trackgroups.Composition, track:avb.trackgroups.T
 		if t.media_kind == track.media_kind and t.index == component.track_id:
 			resolved_track = t
 	if resolved_track is None:
-		raise ValueError("No corresponding track")
+		raise ValueError(f"No corresponding track ({composition.media_kind=} {component.track_id=} {component=} {composition=}) (resolved_tracks={avbutils.format_track_labels(resolved_mob.tracks)})")
 		
 
 	# SourceClip.start_time refers to the "parent" mob edit units (the one from which we're resolving).
@@ -119,7 +119,14 @@ def analyze_masterclip_stack(stack:"MasterclipStack"):
 	latest_file_mob = next(track_stack.file_source_mobs())
 
 	if isinstance(latest_file_mob.descriptor.locator, avb.misc.MSMLocator):
-		print(f"It is imported to {latest_file_mob.descriptor.locator.last_known_volume_utf8}")
+		
+		last_volume = None
+		
+		for prop in ("last_known_volume_utf8", "last_known_volume"):
+			last_volume = latest_file_mob.descriptor.locator.property_data.get(prop, None)
+		
+		if last_volume:
+			print(f"It is imported to {last_volume}")
 	
 
 	#if link_type == "UME-linked":
@@ -221,7 +228,18 @@ class TrackMobStack:
 			return "NONE????"
 		
 		if "locator" in oldest_physical_mob.descriptor.property_data and isinstance(oldest_physical_mob.descriptor.locator, avb.misc.FileLocator):
-			return oldest_physical_mob.descriptor.locator.path_utf8
+			
+			# NOTE: Seems like it could be in any of these
+			for prop in ("path_utf8","path2_utf8","path_posix","path"):
+				src_path = oldest_physical_mob.descriptor.locator.property_data.get(prop,None)
+				if src_path:
+					#print(type(src_path), src_path, prop)
+					return src_path
+			
+			#raise ValueError("No source file")
+			# NOTE: Need to figure out what to do here
+			return ""
+			
 		else:
 			return oldest_physical_mob.name
 
@@ -307,5 +325,5 @@ if __name__ == "__main__":
 	for bin_path in get_bin_paths(sys.argv[1:]):
 		print(bin_path)
 		process_bin(bin_path)
-		exit()
+		#exit()
 	
