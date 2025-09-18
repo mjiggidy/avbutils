@@ -31,7 +31,7 @@ import avb, avbutils
 def get_component_from_track(trackgroup:avb.trackgroups.TrackGroup, track:avb.trackgroups.Track, offset:int=0) -> avb.components.Component:
 	"""Resolve the component"""
 
-
+	# TODO: Do I really need to be passing the trackgroup and doing this check?  What was that for?  Was it important?  Why did I do this?  Why do I do anything?  Is what I'm doing worth it?  What am I even trying to do?  What else can I do besides assistant editing?  I don't like working with tech people so I don't want to be an engineer again, but I'm not creative.  And I'm not good enoguh of a coder to code.  Unreal Engine is fun but I hear the game industry is no better than the film industry...
 	if track not in trackgroup.tracks:
 		raise ValueError(f"Track {avbutils.format_track_label(track)} not in composition")
 	
@@ -113,6 +113,7 @@ def analyze_masterclip_stack(stack:"MasterclipStack"):
 	link_type = track_stack.link_type()
 	source_type = track_stack.source_type()
 	source_name = track_stack.source_name()
+	source_tc   = stack.get_timecode_range_for_track(track)
 
 	print(f"{avbutils.format_track_label(track)} is {link_type} media from {source_type} {source_name}")
 
@@ -127,6 +128,10 @@ def analyze_masterclip_stack(stack:"MasterclipStack"):
 		
 		if last_volume:
 			print(f"It is imported to {last_volume}")
+	
+	print(f"Timecode is {source_tc}")
+	
+
 	
 
 	#if link_type == "UME-linked":
@@ -205,9 +210,21 @@ class TrackMobStack:
 				return "UME-linked"
 		else:
 			return "Managed"
+		
+	def get_timecode(self) -> avb.components.Timecode:
+
+		for mob in self.stack:
+			for track in mob.tracks:
+				component = get_component_from_track(mob, track)
+				if isinstance(component, avb.components.Timecode):
+					print(f"Got timecode from {avbutils.format_track_label(track)}, source mob {self.stack.index(mob)} ({mob=}) ({avbutils.format_track_labels(mob.tracks)})")
+					return component
+				
+		raise StopIteration
+		
+
 	
 	def source_type(self):
-
 
 		try:
 			oldest_physical_mob = list(self.physical_source_mobs())[-1]
@@ -249,6 +266,19 @@ class MasterclipStack:
 
 	mastermob:avb.trackgroups.Composition
 	tracks:dict[avb.trackgroups.Track, TrackMobStack]
+
+	def get_timecode_range_for_track(self, track:avb.trackgroups.Track):
+
+		import timecode
+
+		tc = self.tracks[track].get_timecode()
+
+		return timecode.TimecodeRange(
+			start = timecode.Timecode(tc.start, rate=round(tc.edit_rate)),
+			duration = self.mastermob.length
+		)
+
+
 
 
 
