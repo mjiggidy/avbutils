@@ -104,21 +104,22 @@ if __name__ == "__main__":
 
 		with avb.open(bin_path) as bin_handle:
 
-			for mastermob in bin_handle.content.mastermobs():
+			for mastermob in bin_handle.content.mobs:
 
 				# Get the first track just so we gots sumn
-				original_track = next(iter(mastermob.tracks))
-				print(mastermob.name + f" ({avbutils.format_track_label(original_track)})")
+				print(str(mastermob.name) + f" ({avbutils.format_track_labels(mastermob.tracks)})")
 
-				# Start us out with our first source clip
-				source_clip = resolve_root_component(original_track.component, offset=0)
 
-				while True:
-					print(source_clip)
+				for source_track in mastermob.tracks:
 					
-					try:
-						source_clip = matchback_sourceclip(source_clip, offset=0)
-					except avbutils.IsAsMatchedBackAsCanBe:
-						print("---")
-						break
-					
+					source_clip  = resolve_root_component(source_track.component, offset=0)
+
+					while True:
+						print(avbutils.format_track_label(source_track), " -> ", source_clip)
+						
+						try:
+							source_clip = matchback_sourceclip(source_clip, offset=0)
+						except avbutils.IsAsMatchedBackAsCanBe:
+							print("---")
+							break
+						
