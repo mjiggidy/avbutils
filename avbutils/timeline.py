@@ -13,6 +13,7 @@ class TrackTypes(enum.Enum):
 	TIMECODE = "timecode"
 	EDGECODE = "edgecode"
 	DATA_ESSENCE = "DataEssenceTrack" # TODO: Investigate
+	DESCRIPTIVE_METADATA = "DescriptiveMetadata"  # TODO: Investigate
 
 	@classmethod
 	def from_track(cls, track:avb.trackgroups.Track) -> "TrackTypes":
@@ -30,6 +31,7 @@ class TrackTypes(enum.Enum):
 			cls.TIMECODE:     "TC",
 			cls.EDGECODE:     "EC",
 			cls.DATA_ESSENCE: "D",
+			cls.DESCRIPTIVE_METADATA: "DM",
 		}
 	
 	def prefix(self) -> str:
