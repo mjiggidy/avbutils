@@ -20,13 +20,31 @@ import sys, pathlib, typing
 from os import PathLike
 import avb, avbutils
 
+def matchback_sourceclip(source_clip:avb.components.SourceClip, offset:int=0) -> avb.components.Component:
+	"""Given a `SourceClip,` follow its reference to its source"""
+
+	if not isinstance(source_clip, avb.components.SourceClip) or not source_clip.mob:
+		#print("Got", source_clip)
+		raise avbutils.IsAsMatchedBackAsCanBe
+	
+	# From the referenced mob, find the referenced track
+	try:
+		matched_track = next(t for t in source_clip.mob.tracks if t.media_kind == source_clip.media_kind and t.index == source_clip.track_id)
+	except StopIteration:
+		raise ValueError(f"Could not find track {source_clip.media_kind=}{source_clip.track_id=} in mob {source_clip.mob} ({avbutils.format_track_labels(source_clip.mob.tracks)})")
+	
+	# From the referenced track, recover the referenced component at the referenced start_time
+	return resolve_root_component(matched_track.component, offset=source_clip.start_time+offset) # TODO: Need to do the offset conversion thing still(?)
 
 
-def resolve_component_from_track(component:avb.components.Component, offset:int=0) -> avb.components.Component:
+
+def resolve_root_component(component:avb.components.Component, offset:int=0) -> avb.components.Component:
 	"""Given a component, crawl through track effects or sequences to access the root component, such as a `avb.components.SourceClip`"""
 
+	#print(component)
+
 	while isinstance(component, avb.components.Sequence) or isinstance(component, avb.trackgroups.TrackGroup) or isinstance(component, avb.trackgroups.Track):
-		print("Then resolve", component)
+		#print("Then resolve", component)
 		# Sequence? Find component at time
 		if isinstance(component, avb.components.Sequence):
 			component,_ = component.nearest_component_at_time(offset)
@@ -37,24 +55,26 @@ def resolve_component_from_track(component:avb.components.Component, offset:int=
 			if "component" not in component.property_data:
 				#print("********** BREAK")
 				break
-			component = resolve_component(component.component, offset)
+			component = resolve_root_component(component.component, offset)
 		
 		# Trackgrounp (TrackEffect, etc)?  Get relevant track from inner trackgroup
 		elif isinstance(component, avb.trackgroups.TrackGroup):
 
 			#print(component.media_kind, component.property_data)
 			#exit()
-			print("Uh oh")
+			#print("Uh oh")
 			for t in component.tracks:
 
 				try:
-					component = resolve_component(t, offset)
+					component = resolve_root_component(t, offset)
 				except ValueError:
 					continue
 
 	#		raise ValueError(f"Track not found: {avbutils.format_track_label(track)} not in {component}")
 	
-	return component	
+	return component
+
+
 
 ################################
 ################################
@@ -91,18 +111,14 @@ if __name__ == "__main__":
 				print(mastermob.name + f" ({avbutils.format_track_label(original_track)})")
 
 				# Start us out with our first source clip
-				source_clip = resolve_component(original_track.component, offset=0)
+				source_clip = resolve_root_component(original_track.component, offset=0)
 
 				while True:
-					print(source_clip.mob)
-
-					track_type = avbutils.TrackTypes(source_clip.media_kind)
-					track_id   = source_clip.track_id
-
-					source_mob_track = next(avbutils.get_tracks_from_composition(source_clip.mob, type=track_type, index=track_id))
-					source_clip = resolve_component(source_mob_track.component)
-
-					if not isinstance(source_clip, avb.components.SourceClip):
+					print(source_clip)
+					
+					try:
+						source_clip = matchback_sourceclip(source_clip, offset=0)
+					except avbutils.IsAsMatchedBackAsCanBe:
+						print("---")
 						break
-					elif not(source_clip.mob):
-						break
+					
