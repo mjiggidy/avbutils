@@ -48,6 +48,16 @@ class MobLineage:
 		return self._stack
 	
 	@property
+	def resolved_attributes(self) -> dict:
+		
+		source_attributes = dict()
+		
+		for source in reversed(self.sources):
+			source_attributes.update(source.mob.attributes)
+		
+		return source_attributes
+	
+	@property
 	def file_source(self) -> avb.components.SourceClip|None:
 
 		for clip in self._stack:
@@ -75,6 +85,40 @@ class MobLineage:
 					return track, clip
 		
 		return None
+	
+	@property
+	def has_managed_media(self) -> bool:
+		"""Does this mob reference managed media"""
+
+		desc = self.file_source.mob.descriptor
+
+		if isinstance(desc, avb.essence.MultiDescriptor):
+			desc = desc.descriptors
+		else:
+			desc = [desc]
+		
+		for d in desc:
+			if isinstance(d.locator, avb.misc.MSMLocator) and (d.physical_media is None or isinstance(d.physical_media.locator, avb.misc.URLLocator)):
+				return True
+		
+		return False
+	
+	@property
+	def has_linked_media(self) -> bool:
+		"""Does this mob reference UME-linked media"""
+
+		desc = self.file_source.mob.descriptor
+
+		if isinstance(desc, avb.essence.MultiDescriptor):
+			desc = desc.descriptors
+		else:
+			desc = [desc]
+		
+		for d in desc:
+			if isinstance(d.locator, avb.misc.MSMLocator) and d.physical_media and isinstance(d.physical_media.locator, avb.misc.FileLocator):
+				return True
+		
+		return False
 
 class CompositionMatchbackInfo:
 
@@ -103,6 +147,34 @@ class CompositionMatchbackInfo:
 	@property
 	def source_name(self) -> str:
 		return self.tracks[self.primary_track].physical_source.mob.name
+	
+	@property
+	def resolved_attributes(self) -> dict:
+
+		source_attributes = dict()
+		
+		for track, info in reversed(self.tracks.items()):
+			source_attributes.update(info.resolved_attributes)
+		
+		source_attributes.update(self.composition.attributes)
+
+		return source_attributes
+	
+	@property
+	def has_managed_media(self) -> bool:
+
+		return  any(
+			t.has_managed_media for _,t in self.tracks.items()
+		)
+	
+	@property
+	def has_linked_media(self) -> bool:
+
+		return any(
+			t.has_linked_media for _,t in self.tracks.items()
+		)
+
+
 
 
 
@@ -178,7 +250,86 @@ def get_test_clips(bin_content:avb.bin.Bin) -> typing.Iterator[avb.trackgroups.C
 
 	yield from bin_content.mastermobs()
 
+def do_bin_item(bin_item:avb.bin.BinItem):
+
+	bin_item_roles = avbutils.BinDisplayItemTypes.from_bin_item(bin_item)
+
+	if not any(r in bin_item_roles for r in (avbutils.BinDisplayItemTypes.MASTER_CLIPS,)):
+		return
+
+	mastermob = bin_item.mob
+	info = CompositionMatchbackInfo(mastermob)
+	source_attributes = info.resolved_attributes
+
+	if info.has_linked_media and not info.has_managed_media:
+			primary_link_method = "UME Linked"
+	elif not info.has_linked_media and info.has_managed_media:
+		primary_link_method = "Managed"
+	else:
+		sys.exit("WHAT")
+
+	print(f"{bin_item_roles}: ({primary_link_method}) {info.composition.name} ({avbutils.format_track_labels(info.tracks)})")
+	
+	#import pprint
+	#pprint.pprint(source_attributes)
+	print(source_attributes.keys())
+
+	try:
+		primary_file_mob = info.tracks[info.primary_track].file_source
+		primary_phys_mob = info.tracks[info.primary_track].physical_source
+	except Exception as e:
+		print(e)
+
+	if not any([primary_file_mob, primary_phys_mob]):
+		for mob in info.tracks[info.primary_track].sources:
+			sys.exit(mob.mob)
+
+
+
+	
+	
+
+
+	for track in info.tracks:
+		try:
+			primary_source_type = avbutils.SourceMobRole.from_composition(info.tracks[track].physical_source.mob)
+		except Exception as e:
+			print(e, info.tracks[track].sources[0].mob, avbutils.format_track_labels(info.tracks[track].sources[0].mob.tracks))
+		primary_source_name = info.tracks[track].physical_source.mob.name
+
+		if info.tracks[track].has_linked_media and not info.tracks[track].has_managed_media:
+			track_link_method = "UME Linked"
+		elif not info.tracks[track].has_linked_media and info.tracks[track].has_managed_media:
+			track_link_method = "Managed"
+		else:
+			sys.exit("WHAT")
+		
+		found_tc = info.tracks[track].resolve_track(track_type=avbutils.TrackTypes.TIMECODE, track_index=1)
+
+		#print(source_attributes)
+
+
+		# Get the first track just so we gots sumn
+		if found_tc:
+			tc_trk, tc_src_clp = found_tc
+			tc_cmp = resolve_root_component(tc_trk.component)
+			
+			import timecode
+			parsed_tc = timecode.TimecodeRange(
+				start=timecode.Timecode(tc_cmp.start + tc_src_clp.start_time, rate=round(tc_cmp.edit_rate)),
+				duration = info.composition.length
+			)
+		else:
+			parsed_tc = "00"
+	
+		print(f"{avbutils.format_track_label(track)}: {primary_source_type}: {primary_source_name} ({track_link_method})   {parsed_tc}")
+	
+	print("---")
+
 if __name__ == "__main__":
+
+	fail = 0
+	succ = 0
 
 	for bin_path in get_bin_paths(sys.argv[1:]):
 		print(bin_path)
@@ -186,59 +337,13 @@ if __name__ == "__main__":
 		with avb.open(bin_path) as bin_handle:
 
 			for bin_item in bin_handle.content.items:
-
-				bin_item_roles = avbutils.BinDisplayItemTypes.from_bin_item(bin_item)
-
-				if not any(r in bin_item_roles for r in (avbutils.BinDisplayItemTypes.MASTER_CLIPS,)):
-					continue
-
-				mastermob = bin_item.mob
-				info = CompositionMatchbackInfo(mastermob)
-
-				print(f"{bin_item_roles}: {info.composition.name} ({avbutils.format_track_labels(info.tracks)})")
 				
 				try:
-					primary_file_mob = info.tracks[info.primary_track].file_source
-					primary_phys_mob = info.tracks[info.primary_track].physical_source
+					do_bin_item(bin_item)
+					succ += 1
 				except Exception as e:
-					sys.exit(e)
-
-				if not any([primary_file_mob, primary_phys_mob]):
-					for mob in info.tracks[info.primary_track].sources:
-						sys.exit(mob.mob)
-
-
-
+					print(e)
+					fail += 1
 				
-				
+				print(f"{succ=} {fail=}", file=sys.stderr, end="\r")
 
-	
-				for track in info.tracks:
-					primary_source_type = avbutils.SourceMobRole.from_composition(info.tracks[track].physical_source.mob)
-					primary_source_name = info.tracks[track].physical_source.mob.name
-					
-					found_tc = info.tracks[track].resolve_track(track_type=avbutils.TrackTypes.TIMECODE, track_index=1)
-
-					source_attributes = dict()
-					for source in reversed(info.tracks[track].sources):
-						source_attributes.update(source.mob.attributes)
-					source_attributes.update(info.composition.attributes)
-					#print(source_attributes)
-
-
-					# Get the first track just so we gots sumn
-					if found_tc:
-						tc_trk, tc_src_clp = found_tc
-						tc_cmp = resolve_root_component(tc_trk.component)
-						
-						import timecode
-						parsed_tc = timecode.TimecodeRange(
-							start=timecode.Timecode(tc_cmp.start + tc_src_clp.start_time, rate=round(tc_cmp.edit_rate)),
-							duration = info.composition.length
-						)
-					else:
-						parsed_tc = "00"
-				
-					print(f"{avbutils.format_track_label(track)}: {primary_source_type}: {primary_source_name}   {parsed_tc} {'\t'.join(f'{x}: {y}' for x,y in source_attributes.get('_USER',dict()).items() if y)}")
-				
-				print("---")
