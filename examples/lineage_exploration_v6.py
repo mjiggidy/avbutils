@@ -31,15 +31,24 @@ class MobLineage:
 
 		while True:
 			try:
-				component = matchback_sourceclip(component)
+				component = matchback_sourceclip(src_stack[-1])
+				
+				if not isinstance(component, avb.components.SourceClip) or not component.mob:
+					raise avbutils.IsAsMatchedBackAsCanBe
+				
 				src_stack.append(component)
+
 			except avbutils.IsAsMatchedBackAsCanBe:
 				break
 		
 		return cls(src_stack)
 	
 	@property
-	def file_mob(self) -> avb.components.SourceClip|None:
+	def sources(self) ->  list[avb.components.SourceClip]:
+		return self._stack
+	
+	@property
+	def file_source(self) -> avb.components.SourceClip|None:
 
 		for clip in self._stack:
 			if avbutils.composition_is_source_mob(clip.mob) and avbutils.SourceMobRole.from_composition(clip.mob) == avbutils.SourceMobRole.ESSENCE:
@@ -48,7 +57,7 @@ class MobLineage:
 		return None
 			
 	@property
-	def physical_mob(self) -> avb.components.SourceClip|None:
+	def physical_source(self) -> avb.components.SourceClip|None:
 
 		for clip in self._stack:
 			if avbutils.composition_is_source_mob(clip.mob) and avbutils.SourceMobRole.from_composition(clip.mob) != avbutils.SourceMobRole.ESSENCE:
@@ -93,16 +102,12 @@ class CompositionMatchbackInfo:
 	
 	@property
 	def source_name(self) -> str:
-		
-		lineage = self.tracks[self.primary_track]
-		#print(lineage._stack)
-
-		return self.tracks[self.primary_track].physical_mob.mob.name
+		return self.tracks[self.primary_track].physical_source.mob.name
 
 
 
 #################################
-#########MATCHBACK FUNCS#########
+######## MATCHBACK FUNCS ########
 #################################
 
 
@@ -180,16 +185,60 @@ if __name__ == "__main__":
 
 		with avb.open(bin_path) as bin_handle:
 
-			for mastermob in bin_handle.content.mastermobs():
+			for bin_item in bin_handle.content.items:
+
+				bin_item_roles = avbutils.BinDisplayItemTypes.from_bin_item(bin_item)
+
+				if not any(r in bin_item_roles for r in (avbutils.BinDisplayItemTypes.MASTER_CLIPS,)):
+					continue
+
+				mastermob = bin_item.mob
+				info = CompositionMatchbackInfo(mastermob)
+
+				print(f"{bin_item_roles}: {info.composition.name} ({avbutils.format_track_labels(info.tracks)})")
+				
 				try:
-					info = CompositionMatchbackInfo(mastermob)
+					primary_file_mob = info.tracks[info.primary_track].file_source
+					primary_phys_mob = info.tracks[info.primary_track].physical_source
+				except Exception as e:
+					sys.exit(e)
+
+				if not any([primary_file_mob, primary_phys_mob]):
+					for mob in info.tracks[info.primary_track].sources:
+						sys.exit(mob.mob)
+
+
+
+				
+				
+
+	
+				for track in info.tracks:
+					primary_source_type = avbutils.SourceMobRole.from_composition(info.tracks[track].physical_source.mob)
+					primary_source_name = info.tracks[track].physical_source.mob.name
+					
+					found_tc = info.tracks[track].resolve_track(track_type=avbutils.TrackTypes.TIMECODE, track_index=1)
+
+					source_attributes = dict()
+					for source in reversed(info.tracks[track].sources):
+						source_attributes.update(source.mob.attributes)
+					source_attributes.update(info.composition.attributes)
+					#print(source_attributes)
+
 
 					# Get the first track just so we gots sumn
-					print(f"{info.composition.name} ({avbutils.format_track_labels(info.tracks)})")
-					
-					primary_track = info.primary_track
-					primary_source_name = info.source_name
-					print(avbutils.format_track_label(primary_track), primary_source_name)
-				except:
-					continue
+					if found_tc:
+						tc_trk, tc_src_clp = found_tc
+						tc_cmp = resolve_root_component(tc_trk.component)
+						
+						import timecode
+						parsed_tc = timecode.TimecodeRange(
+							start=timecode.Timecode(tc_cmp.start + tc_src_clp.start_time, rate=round(tc_cmp.edit_rate)),
+							duration = info.composition.length
+						)
+					else:
+						parsed_tc = "00"
+				
+					print(f"{avbutils.format_track_label(track)}: {primary_source_type}: {primary_source_name}   {parsed_tc} {'\t'.join(f'{x}: {y}' for x,y in source_attributes.get('_USER',dict()).items() if y)}")
+				
 				print("---")

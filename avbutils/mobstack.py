@@ -29,7 +29,7 @@ class SourceMobRole(enum.Enum):
 	def from_composition(cls, comp: avb.trackgroups.Composition) -> "SourceMobRole":
 		
 		if compositions.MobTypes.from_composition(comp) != compositions.MobTypes.SOURCE_MOB or comp.descriptor is None:
-			raise ValueError("Composition does not appear to be a source mob")
+			raise ValueError("Composition does not appear to be a source mob:", comp)
 		
 		return cls.from_descriptor(comp.descriptor)
 	
@@ -96,10 +96,13 @@ class MobStack:
 			raise FillerDuringMatchback
 
 		if isinstance(component, avb.components.SourceClip) and component.track_id == 0:
+			print("******* OOOH LOOOOK     ", component.mob_id.material.fields, component.mob_id.to_dict())
 			raise StopMatchback
 		
 		if isinstance(component, avb.components.Timecode):
 			raise StopMatchback
+		
+		print("**** NOPE  ", component.mob_id.material, component.mob_id.to_dict())
 
 		resolved_mob = track.root.content.find_by_mob_id(component.mob_id)
 		resolved_track = next(t for t in resolved_mob.tracks if t.media_kind == track.media_kind and t.index == component.track_id)
