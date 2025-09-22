@@ -23,6 +23,7 @@ def resolve_root_component(component:avb.components.Component, offset:int=0) -> 
 		elif isinstance(component, avb.trackgroups.TrackGroup):
 
 			# NOTE: I don't believe in this
+			#exit()
 			for t in component.tracks:
 
 				try:
@@ -34,10 +35,6 @@ def resolve_root_component(component:avb.components.Component, offset:int=0) -> 
 	return component
 
 
-
-
-
-
 def show_composition_info(composition:avb.trackgroups.Composition):
 
 	print(f"{composition.name} ({avbutils.format_track_labels(composition.tracks)})")
@@ -47,12 +44,14 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		# Resolve root component of track component
 		# That gives us our next SourceClip with mob OR another component type
 
-		mobs = []
+		referenced_clips = []
 		
+		# Start by resolving the SrcClip of the desired track
 		root_component = resolve_root_component(track.component)
 
+		# And then get the next SrcClip in line.
 		while isinstance(root_component, avb.components.SourceClip) and root_component.mob:
-			mobs.append(root_component)
+			referenced_clips.append(root_component)
 			root_component = resolve_root_component(
 				root_component.track.component,
 				offset=root_component.start_time #?
@@ -60,7 +59,13 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		
 		#mobs.append(root_component)
 
-		print(f"{avbutils.format_track_label(track).rjust(3)} : {mobs}")
+		reference_clip_info:list[str] = []
+		for clip in referenced_clips:
+			reference_clip_info.append(
+				f"[{avbutils.SourceMobRole.from_composition(clip.mob)}: {clip.mob.name} ({clip.mob.descriptor, clip.mob.descriptor.locator})]"
+			)
+
+		print(f"{avbutils.format_track_label(track).rjust(3)} : {' '.join(reference_clip_info)}")
 
 
 
