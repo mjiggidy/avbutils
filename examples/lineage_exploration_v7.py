@@ -36,22 +36,18 @@ def resolve_root_component(component:avb.components.Component, offset:int=0) -> 
 
 def source_references_for_component(component:avb.components.Component) -> typing.Generator[avb.components.SourceClip,None,None]:
 
-	# Get to the root SourceClip or whatever
-	
-	
-	# If that root was indeed a SourceClip and has a mob, return it
+	# If that root was indeed a SourceClip and has a valid track, return it
 	component = resolve_root_component(component)
 
-		
-	while isinstance(component, avb.components.SourceClip) and component.mob:
-		#print("From ", component)
+	# vvvvvvvvvvvvvvvvvv
+	#if isinstance(component, avb.components.SourceClip) and not component.track:
+	#	input("LOOK")
+	# ^^^^^^ NOTE ^^^^^^
+	# Invalid matchback can yield a in invalid track_id=256 meaning component.track==None
+	# Need to investigate.  Probably uh.. something
+	while isinstance(component, avb.components.SourceClip) and component.track:
 		yield component
 		component = resolve_root_component(component.track.component, offset=component.start_time)
-		#print("Returning", component)
-		
-
-		#print("ASk for", component)
-	#print("Done")
 
 
 
@@ -60,15 +56,17 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 	"""Nice lil function to show source references"""
 
 	print(f"{composition.name} ({avbutils.format_track_labels(composition.tracks)})")
-
+	
 	for track in composition.tracks:
+
 
 		reference_clip_info:list[str] = []
 		for clip in source_references_for_component(track.component):
+				
 			reference_clip_info.append(
 				f"[{avbutils.SourceMobRole.from_composition(clip.mob)}: {clip.mob.name} ({avbutils.format_track_labels(clip.mob.tracks)})  ({type(clip.mob.descriptor).__name__} @ {type(clip.mob.descriptor.locator).__name__})]"
 			)
-
+			
 		filemob_count = len(list(file_references_for_component(track.component)))
 		physmob_count = len(list(physical_references_for_component(track.component)))
 
@@ -76,6 +74,9 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		print(f"{avbutils.format_track_label(track).rjust(3)} [{filemob_count=} {physmob_count=}] : {' '.join(reference_clip_info)}")
 		if not all((filemob_count, physmob_count)):
 			print("^^^ LOOK ^^^")
+	
+	if composition.name == "68-1B":
+		input("LOOK")
 			
 
 
