@@ -37,14 +37,21 @@ def resolve_root_component(component:avb.components.Component, offset:int=0) -> 
 def source_references_for_component(component:avb.components.Component) -> typing.Generator[avb.components.SourceClip,None,None]:
 
 	# Get to the root SourceClip or whatever
-	component = resolve_root_component(component)
+	
 	
 	# If that root was indeed a SourceClip and has a mob, return it
-	if isinstance(component, avb.components.SourceClip) and component.mob:
-		yield component.track.component
-	
-	else:
-		raise avbutils.IsAsMatchedBackAsCanBe
+	component = resolve_root_component(component)
+
+		
+	while isinstance(component, avb.components.SourceClip) and component.mob:
+		#print("From ", component)
+		yield component
+		component = resolve_root_component(component.track.component, offset=component.start_time)
+		#print("Returning", component)
+		
+
+		#print("ASk for", component)
+	#print("Done")
 
 
 
@@ -68,15 +75,19 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		#		root_component.track.component,
 		#		offset=root_component.start_time #?
 		#	)
-
+		#resolved_track_component = resolve_root_component(track.component)
+		#print("Resolved to ", resolved_track_component)
 		referenced_clips = list(source_references_for_component(track.component))
+		#print(referenced_clips)
+
+		#print(referenced_clips)
 		
 		#mobs.append(root_component)
 
 		reference_clip_info:list[str] = []
 		for clip in referenced_clips:
 			reference_clip_info.append(
-				f"[{avbutils.SourceMobRole.from_composition(clip.mob)}: {clip.mob.name} ({clip.mob.descriptor, clip.mob.descriptor.locator})]"
+				f"[{avbutils.SourceMobRole.from_composition(clip.mob)}: {clip.mob.name} ({avbutils.format_track_labels(clip.mob.tracks)})  ({type(clip.mob.descriptor).__name__} @ {type(clip.mob.descriptor.locator).__name__})]"
 			)
 
 		print(f"{avbutils.format_track_label(track).rjust(3)} : {' '.join(reference_clip_info)}")
