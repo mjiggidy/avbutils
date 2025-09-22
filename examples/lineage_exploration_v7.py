@@ -36,16 +36,20 @@ def resolve_root_component(component:avb.components.Component, offset:int=0) -> 
 
 def source_references_for_component(component:avb.components.Component) -> typing.Generator[avb.components.SourceClip,None,None]:
 
+	global invalid
+
 	# If that root was indeed a SourceClip and has a valid track, return it
 	component = resolve_root_component(component)
 
-	# vvvvvvvvvvvvvvvvvv
-	#if isinstance(component, avb.components.SourceClip) and not component.track:
-	#	input("LOOK")
-	# ^^^^^^ NOTE ^^^^^^
-	# Invalid matchback can yield a in invalid track_id=256 meaning component.track==None
-	# Need to investigate.  Probably uh.. something
-	while isinstance(component, avb.components.SourceClip) and component.track:
+	while isinstance(component, avb.components.SourceClip) and component.mob:
+		# vvvvvvvvvvvvvvvvvv
+		if isinstance(component, avb.components.SourceClip) and not component.track:
+			invalid.append(f"LOOK: {component.start_time} {component.mob.length}")
+			break
+
+		# ^^^^^^ NOTE ^^^^^^
+		# Invalid matchback can yield a in invalid track_id=256 meaning component.track==None
+		# Need to investigate.  Probably uh.. something	
 		yield component
 		component = resolve_root_component(component.track.component, offset=component.start_time)
 
@@ -74,9 +78,6 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		print(f"{avbutils.format_track_label(track).rjust(3)} [{filemob_count=} {physmob_count=}] : {' '.join(reference_clip_info)}")
 		if not all((filemob_count, physmob_count)):
 			print("^^^ LOOK ^^^")
-	
-	if composition.name == "68-1B":
-		input("LOOK")
 			
 
 
@@ -101,6 +102,8 @@ if __name__ == "__main__":
 
 	fail = 0
 	succ = 0
+
+	invalid = list()
 
 	def is_valid_test_item(bin_item:avb.bin.BinItem) -> bool:
 		"""Use this item as a test item"""
@@ -143,6 +146,6 @@ if __name__ == "__main__":
 		print(bin_path)
 		do_bin(bin_path)
 		
-		print(f"{succ=} {fail=}", file=sys.stderr, end="\r")
+		print(f"{succ=} {fail=} {invalid=}", file=sys.stderr, end="\r")
 	
 	print(f"")
