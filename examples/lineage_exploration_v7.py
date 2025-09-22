@@ -57,40 +57,33 @@ def source_references_for_component(component:avb.components.Component) -> typin
 
 
 def show_composition_info(composition:avb.trackgroups.Composition):
+	"""Nice lil function to show source references"""
 
 	print(f"{composition.name} ({avbutils.format_track_labels(composition.tracks)})")
 
 	for track in composition.tracks:
 
-		# Resolve root component of track component
-		# That gives us our next SourceClip with mob OR another component type
-
-		
-		# Start by resolving the SrcClip of the desired track
-		# And then get the next SrcClip in line.
-		#root_component = resolve_root_component(track.component)
-		#while isinstance(root_component, avb.components.SourceClip) and root_component.mob:
-		#	referenced_clips.append(root_component)
-		#	root_component = resolve_root_component(
-		#		root_component.track.component,
-		#		offset=root_component.start_time #?
-		#	)
-		#resolved_track_component = resolve_root_component(track.component)
-		#print("Resolved to ", resolved_track_component)
-		referenced_clips = list(source_references_for_component(track.component))
-		#print(referenced_clips)
-
-		#print(referenced_clips)
-		
-		#mobs.append(root_component)
-
 		reference_clip_info:list[str] = []
-		for clip in referenced_clips:
+		for clip in source_references_for_component(track.component):
 			reference_clip_info.append(
 				f"[{avbutils.SourceMobRole.from_composition(clip.mob)}: {clip.mob.name} ({avbutils.format_track_labels(clip.mob.tracks)})  ({type(clip.mob.descriptor).__name__} @ {type(clip.mob.descriptor.locator).__name__})]"
 			)
 
-		print(f"{avbutils.format_track_label(track).rjust(3)} : {' '.join(reference_clip_info)}")
+		filemob_count = len(list(file_references_for_component(track.component)))
+		physmob_count = len(list(physical_references_for_component(track.component)))
+
+
+		print(f"{avbutils.format_track_label(track).rjust(3)} [{filemob_count=} {physmob_count=}] : {' '.join(reference_clip_info)}")
+		if not all((filemob_count, physmob_count)):
+			print("^^^ LOOK ^^^")
+			
+
+
+def file_references_for_component(component:avb.components.Component):
+	yield from filter(lambda m: avbutils.SourceMobRole.from_composition(m.mob) == avbutils.SourceMobRole.ESSENCE, source_references_for_component(component))
+
+def physical_references_for_component(component:avb.components.Component):
+	yield from filter(lambda m: avbutils.SourceMobRole.from_composition(m.mob) != avbutils.SourceMobRole.ESSENCE, source_references_for_component(component))
 
 
 
@@ -150,4 +143,5 @@ if __name__ == "__main__":
 		do_bin(bin_path)
 		
 		print(f"{succ=} {fail=}", file=sys.stderr, end="\r")
-
+	
+	print(f"")
