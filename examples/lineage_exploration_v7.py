@@ -34,6 +34,20 @@ def resolve_root_component(component:avb.components.Component, offset:int=0) -> 
 	
 	return component
 
+def source_references_for_component(component:avb.components.Component) -> typing.Generator[avb.components.SourceClip,None,None]:
+
+	# Get to the root SourceClip or whatever
+	component = resolve_root_component(component)
+	
+	# If that root was indeed a SourceClip and has a mob, return it
+	if isinstance(component, avb.components.SourceClip) and component.mob:
+		yield component.track.component
+	
+	else:
+		raise avbutils.IsAsMatchedBackAsCanBe
+
+
+
 
 def show_composition_info(composition:avb.trackgroups.Composition):
 
@@ -44,18 +58,18 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		# Resolve root component of track component
 		# That gives us our next SourceClip with mob OR another component type
 
-		referenced_clips = []
 		
 		# Start by resolving the SrcClip of the desired track
-		root_component = resolve_root_component(track.component)
-
 		# And then get the next SrcClip in line.
-		while isinstance(root_component, avb.components.SourceClip) and root_component.mob:
-			referenced_clips.append(root_component)
-			root_component = resolve_root_component(
-				root_component.track.component,
-				offset=root_component.start_time #?
-			)
+		#root_component = resolve_root_component(track.component)
+		#while isinstance(root_component, avb.components.SourceClip) and root_component.mob:
+		#	referenced_clips.append(root_component)
+		#	root_component = resolve_root_component(
+		#		root_component.track.component,
+		#		offset=root_component.start_time #?
+		#	)
+
+		referenced_clips = list(source_references_for_component(track.component))
 		
 		#mobs.append(root_component)
 
