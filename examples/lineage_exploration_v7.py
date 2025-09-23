@@ -55,11 +55,65 @@ def source_references_for_component(component:avb.components.Component) -> typin
 
 
 
+def descriptor_has_linked_media(descriptor:avb.essence.MediaDescriptor) -> bool:
+	"""Does this mob reference UME-linked media"""
+
+	if isinstance(descriptor, avb.essence.MultiDescriptor):
+		descriptor = descriptor.descriptors
+	else:
+		descriptor = [descriptor]
+	
+	for d in descriptor:
+		if isinstance(d.locator, avb.misc.MSMLocator) and d.physical_media and isinstance(d.physical_media.locator, avb.misc.FileLocator):
+			return True
+	
+	return False
+
+
+def resolve_track_from_component(component:avb.components.Component, track_type:avbutils.TrackTypes, track_index:int) -> tuple[avb.trackgroups.Track, avb.components.SourceClip]|None:
+	"""Return mob"""
+
+	for clip in source_references_for_component(component):
+		for track in clip.mob.tracks:
+			if track.index == track_index and avbutils.TrackTypes.from_track(track) == track_type:
+				return track, clip
+
+
+##########################################
+##########################################
+##########################################
+
+
+
 
 def show_composition_info(composition:avb.trackgroups.Composition):
 	"""Nice lil function to show source references"""
 
 	print(f"{composition.name} ({avbutils.format_track_labels(composition.tracks)})")
+
+	primary_track = composition.tracks[0]
+
+	source_info = []
+
+	# Physical mob stuff
+	try:
+		primary_physical_sourceclip = next(physical_references_for_component(primary_track.component))
+	except StopIteration:
+		pass
+	else:
+		source_info.append(f"{avbutils.SourceMobRole.from_composition(primary_physical_sourceclip.mob)}: {primary_physical_sourceclip.mob.name}")
+
+	# File mob stuff
+	try:
+		primary_file_sourceclip = next(file_references_for_component(primary_track.component))
+	except StopIteration:
+		pass
+	else:
+		source_info.append("UME-Linked Media" if descriptor_has_linked_media(primary_file_sourceclip.mob.descriptor) else f"Managed Media on {primary_file_sourceclip.mob.descriptor.locator.last_known_volume}")
+
+
+	print(" | ".join(source_info))
+
 	
 	for track in composition.tracks:
 
@@ -90,7 +144,9 @@ def physical_references_for_component(component:avb.components.Component):
 
 
 
-
+##########################################
+##########################################
+##########################################
 
 
 
@@ -146,6 +202,6 @@ if __name__ == "__main__":
 		print(bin_path)
 		do_bin(bin_path)
 		
-		print(f"{succ=} {fail=} {invalid=}", file=sys.stderr, end="\r")
+		print(f"{succ=} {fail=} {len(invalid)=}", file=sys.stderr, end="\r")
 	
 	print(f"")
