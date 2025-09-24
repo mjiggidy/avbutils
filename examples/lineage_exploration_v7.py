@@ -100,6 +100,11 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 		primary_physical_sourceclip = next(physical_references_for_component(primary_track.component))
 	except StopIteration:
 		pass
+	except ValueError as e:
+		global fail
+		fail+=1
+		print("OH NO LOOK", e) # Probably PCMA 0x02
+		return
 	else:
 		source_info.append(f"{avbutils.SourceMobRole.from_composition(primary_physical_sourceclip.mob)}: {primary_physical_sourceclip.mob.name}")
 
@@ -109,7 +114,7 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 	except StopIteration:
 		pass
 	else:
-		source_info.append("UME-Linked Media" if descriptor_has_linked_media(primary_file_sourceclip.mob.descriptor) else f"Managed Media on {primary_file_sourceclip.mob.descriptor.locator.last_known_volume}")
+		source_info.append("UME-Linked Media" if descriptor_has_linked_media(primary_file_sourceclip.mob.descriptor) else f"Managed Media")
 
 
 	print(" | ".join(source_info))
