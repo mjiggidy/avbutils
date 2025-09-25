@@ -12,6 +12,11 @@ def show_composition_info(composition:avb.trackgroups.Composition):
 	comp_tracks = avbutils.format_track_labels(composition.tracks)
 	comp_rate   = composition.edit_rate
 
+	
+	# NOTE: Juuuuuuuust in case anybody is reading this --
+	# First: hello.  Second: All of this code is a total mess, I know.  I'm just... you know...
+	# I... I'm just working through some stuff.
+	
 	primary_track = avbutils.format_track_label(avbutils.sourcerefs.primary_track_for_composition(composition))
 	
 	if avbutils.sourcerefs.composition_has_physical_source(composition):
