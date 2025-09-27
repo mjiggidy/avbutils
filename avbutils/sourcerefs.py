@@ -100,10 +100,10 @@ def source_references_for_component(component:avb.components.Component, offset:t
 		component, offset = resolve_base_component_from_component(component.track.component, component.start_time + offset)
 
 def file_references_for_component(component:avb.components.Component) -> typing.Generator[tuple[avb.components.SourceClip, timecode.Timecode], None, None]:
-	yield from filter(lambda source_clip: SourceMobRole.from_composition(source_clip[0].mob) == SourceMobRole.ESSENCE, source_references_for_component(component))
+	yield from filter(lambda source_clip: compositions.MobTypes.from_composition(source_clip[0].mob) == compositions.MobTypes.SOURCE_MOB and SourceMobRole.from_composition(source_clip[0].mob) == SourceMobRole.ESSENCE, source_references_for_component(component))
 
 def physical_references_for_component(component:avb.components.Component) -> typing.Generator[tuple[avb.components.SourceClip, timecode.Timecode], None, None]:
-	yield from filter(lambda source_clip: SourceMobRole.from_composition(source_clip[0].mob) != SourceMobRole.ESSENCE, source_references_for_component(component))
+	yield from filter(lambda source_clip: compositions.MobTypes.from_composition(source_clip[0].mob) == compositions.MobTypes.SOURCE_MOB and SourceMobRole.from_composition(source_clip[0].mob) != SourceMobRole.ESSENCE, source_references_for_component(component))
 
 def physical_source_name_for_composition(composition:avb.trackgroups.Composition) -> str|None:
 
