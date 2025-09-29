@@ -106,7 +106,7 @@ class BinDisplayItemTypes(enum.Flag):
 	def from_bin_item(cls, bin_item:avb.bin.BinItem) -> "BinDisplayItemTypes":
 
 		flags = cls(0)
-		flags |= cls.USER_CLIP if bin_item.user_placed else cls.SHOW_REFERENCE_CLIPS
+		flags |= cls.USER_CLIP if bin_item.user_placed else cls.REFERENCE_CLIP
 
 		comp:avb.trackgroups.Composition = bin_item.mob
 
