@@ -37,7 +37,7 @@ class BinDisplayModes(enum.IntEnum):
 		"""Return the `BinDisplayModes` value for a given bin"""
 		return cls(bin.display_mode)
 
-class BinDisplayItemTypes(enum.IntFlag):
+class BinDisplayItemTypes(enum.Flag):
 	"""Types of data to display in the bin (from "Set Bin Display" dialog)"""
 
 	# NOTE: Data originates from `avb.bin.Bin.display_mask` property
@@ -47,39 +47,39 @@ class BinDisplayItemTypes(enum.IntFlag):
 
 	# NOTE: Marry these to `.compositions.MobUsage`?
 
-	MASTER_CLIPS               = 0b00000000000000001
+	MASTER_CLIP               = 0b00000000000000001
 	"""Show Master Clips"""
-	SUBCLIPS                   = 0b00000000000000010
+	SUBCLIP                   = 0b00000000000000010
 	"""Show Subclips"""
-	SEQUENCES                  = 0b00000000000000100
+	SEQUENCE                  = 0b00000000000000100
 	"""Show Sequences"""
-	SOURCES                    = 0b00000000000001000
+	SOURCE                    = 0b00000000000001000
 	"""Show Sources"""
-	EFFECTS                    = 0b00000000000010000
+	EFFECT                    = 0b00000000000010000
 	"""Show Effects"""
-	GROUPS                     = 0b00000000000100000
+	GROUP                     = 0b00000000000100000
 	"""Show Groups"""
-	PRECOMP_RENDERED_EFFECTS   = 0b00000000001000000
+	PRECOMP_RENDERED_EFFECT   = 0b00000000001000000
 	"""Show Precompute Clips - Rendered Effects"""
-	MOTION_EFFECTS             = 0b00000000010000000
+	MOTION_EFFECT             = 0b00000000010000000
 	"""Show Motion Effects"""
 
 	#UNKNOWN_00                = 0b00000000100000000
 
-	SHOW_CLIPS_CREATED_BY_USER = 0b00000001000000000
+	USER_CLIP                 = 0b00000001000000000
 	"""Show Clips Created By User"""
-	SHOW_REFERENCE_CLIPS       = 0b00000010000000000
+	REFERENCE_CLIP            = 0b00000010000000000
 	"""Show Reference Clips"""
-	PRECOMP_TITLES_MATTEKEYS   = 0b00000100000000000
+	PRECOMP_TITLE_MATTEKEY   = 0b00000100000000000
 	"""Show Precompute Clips - Titles and Matte Keys"""
 
 	#UNKNOWN_01                = 0b00001000000000000
 	#UNKNOWN_02                = 0b00010000000000000
 	#UNKNOWN_03                = 0b00100000000000000
 
-	STEREOSCOPIC_CLIPS         = 0b01000000000000000
+	STEREOSCOPIC_CLIP         = 0b01000000000000000
 	"""Show Stereoscopic Clips"""
-	LINKED_MASTER_CLIPS        = 0b10000000000000000
+	LINKED_MASTER_CLIP        = 0b10000000000000000
 	"""Show Linked Master Clips"""
 
 	@classmethod
@@ -88,41 +88,56 @@ class BinDisplayItemTypes(enum.IntFlag):
 		return cls(bin.display_mask)
 	
 	@classmethod
+	def default_items(cls) -> "BinDisplayItemTypes":
+		"""Get the default BinDisplay modes"""
+
+		return \
+			cls.MASTER_CLIP | \
+			cls.LINKED_MASTER_CLIP | \
+			cls.SUBCLIP | \
+			cls.SEQUENCE | \
+			cls.EFFECT | \
+			cls.MOTION_EFFECT | \
+			cls.GROUP | \
+			cls.STEREOSCOPIC_CLIP | \
+			cls.USER_CLIP
+	
+	@classmethod
 	def from_bin_item(cls, bin_item:avb.bin.BinItem) -> "BinDisplayItemTypes":
 
-		flags = []
-		flags.append(cls.SHOW_CLIPS_CREATED_BY_USER if bin_item.user_placed else cls.SHOW_REFERENCE_CLIPS)
+		flags = cls(0)
+		flags |= cls.USER_CLIP if bin_item.user_placed else cls.SHOW_REFERENCE_CLIPS
 
 		comp:avb.trackgroups.Composition = bin_item.mob
 
 		#print(comp)
 
 		if compositions.composition_is_timeline(comp):
-			flags.append(cls.SEQUENCES)
+			flags |= cls.SEQUENCE
 		elif compositions.composition_is_masterclip(comp):
-			flags.append(cls.MASTER_CLIPS)
+			flags |= cls.MASTER_CLIP
 		elif compositions.composition_is_subclip(comp):
-			flags.append(cls.SUBCLIPS)
+			flags |= cls.SUBCLIP
 		elif compositions.composition_is_effect_mob(comp):
-			flags.append( cls.EFFECTS)
+			flags |=  cls.EFFECT
 		elif compositions.composition_is_groupclip(comp):
-			flags.append(cls.GROUPS)
+			flags |= cls.GROUP
 		elif compositions.composition_is_groupoofter(comp):
-			flags.append(cls.GROUPS)
+			flags |= cls.GROUP
 		elif compositions.composition_is_motioneffect_mob(comp):
-			flags.append(cls.MOTION_EFFECTS)
+			flags |= cls.MOTION_EFFECT
 		elif compositions.composition_is_precompute_clip(comp):
-			flags.append(cls.PRECOMP_TITLES_MATTEKEYS)
+			flags |= cls.PRECOMP_TITLE_MATTEKEY
 		elif compositions.composition_is_precompute_mob(comp):
-			flags.append(cls.PRECOMP_RENDERED_EFFECTS)
+			flags |= cls.PRECOMP_RENDERED_EFFECT
 		elif compositions.composition_is_source_mob(comp):
-			flags.append(cls.SOURCES)
+			flags |= cls.SOURCE
 		elif compositions.composition_is_master_mob(comp):
-			flags.append(cls.MASTER_CLIPS)
+			flags |= cls.MASTER_CLIP
 		else:
 			raise ValueError(f"Unable to identify mob role ({compositions.MobTypes.from_composition(comp)=}) ({compositions.MobUsage.from_composition(comp)}=)")
 		
-		return cls(sum(flags))
+		return flags
 	
 	def __str__(self) -> str:
 		"""Show name with nicer formatting"""
