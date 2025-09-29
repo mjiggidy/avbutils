@@ -126,7 +126,9 @@ class BinDisplayItemTypes(enum.IntFlag):
 	
 	def __str__(self) -> str:
 		"""Show name with nicer formatting"""
-		return self.name.replace("_"," ").title()
+		if self.name:
+			return self.name.replace("_"," ").title()
+		return ""
 	
 class BinSortDirection(enum.IntEnum):
 	"""Direction the BinSortMethod will sort.  Note: Corresponds to QtCore.Qt.SortOrder enum"""
