@@ -64,10 +64,11 @@ def resolve_base_component_from_component(component:avb.components.Component, of
 
 			offset.resample(round(component.edit_rate))
 
-	elif isinstance(component, avb.trackgroups.EssenceGroup) or isinstance(component, avb.trackgroups.TrackEffect):
+	elif isinstance(component, avb.trackgroups.EssenceGroup) or isinstance(component, avb.trackgroups.TrackEffect) or isinstance(component, avb.trackgroups.TimeWarp):
 		if len(component.tracks) == 1:
 			component, offset = resolve_base_component_from_component(component.tracks[0].component, offset)
 		else:
+			#print("HAHA OH NO")
 			pass #??
 #			print(f"LOOK: For {component}, Got {len(component.tracks)}  {avbutils.format_track_labels(component.tracks)}")
 	
