@@ -19,15 +19,15 @@ class SourceMobRole(enum.Enum):
 	"""
 
 	ESSENCE  = 1
-	"""Traditional, managed OP-Atom MXF media essence"""
+	"""File media essence"""
 	TAPE        = 2
-	"""Tape source"""
+	"""Physical tape source"""
 	FILM        = 3
-	"""Film source"""
+	"""Physical film source"""
 	SOUNDROLL   = 4
-	"""Traditional soundroll source"""
+	"""Physical soundroll source"""
 	SOURCE_FILE = 5
-	"""Imported file source"""
+	"""Physical imported file source"""
 
 	@classmethod
 	def from_composition(cls, comp: avb.trackgroups.Composition) -> "SourceMobRole":
