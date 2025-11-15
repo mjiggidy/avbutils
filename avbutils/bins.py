@@ -1,4 +1,4 @@
-import enum
+import enum, dataclasses
 import avb
 from . import compositions, matchback
 
@@ -176,6 +176,35 @@ class BinSiftMethod(enum.IntEnum):
 	def from_bin(cls, bin:avb.bin.Bin) -> list["BinSiftMethod"]:
 		# NOTE: Does this make sense to do?
 		return [cls.from_sift_item(item) for item in bin.sifted_settings]
+	
+@dataclasses.dataclass(frozen=True)
+class SiftOption:
+
+	sift_method:BinSiftMethod
+	sift_text  :str
+	sift_column:str
+
+	@classmethod
+	def from_sift_item(cls, sift_item:avb.bin.SiftItem) -> "SiftOption":
+		return cls(
+			sift_method = BinSiftMethod(sift_item.method),
+			sift_text   = sift_item.string,
+			sift_column = sift_item.column,
+		)
+	
+	@classmethod
+	def from_sift_items(cls, sift_items:list[avb.bin.SiftItem]) -> list["SiftOption"]:
+		return [cls.from_sift_item(s) for s in reversed(sift_items)]
+	
+	@classmethod
+	def from_bin(cls, bin_contents:avb.bin.Bin) -> tuple[bool, list["SiftOption"]]:
+		"""Get sift enabled `bool` and list of `BSSiftOption`s from bin contents"""
+
+		return tuple(
+			bin_contents.sifted,
+			cls.from_sift_items(bin_contents.sifted_settings)
+		)
+
 	
 class BinColumnFormat(enum.Enum):
 	"""Display format of a bin column"""
