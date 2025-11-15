@@ -178,14 +178,15 @@ class BinSiftMethod(enum.IntEnum):
 		return [cls.from_sift_item(item) for item in bin.sifted_settings]
 	
 @dataclasses.dataclass(frozen=True)
-class SiftOption:
+class BinSiftOption:
+	"""A single sift option"""
 
 	sift_method:BinSiftMethod
 	sift_text  :str
 	sift_column:str
 
 	@classmethod
-	def from_sift_item(cls, sift_item:avb.bin.SiftItem) -> "SiftOption":
+	def from_sift_item(cls, sift_item:avb.bin.SiftItem) -> "BinSiftOption":
 		return cls(
 			sift_method = BinSiftMethod(sift_item.method),
 			sift_text   = sift_item.string,
@@ -193,14 +194,14 @@ class SiftOption:
 		)
 	
 	@classmethod
-	def from_sift_items(cls, sift_items:list[avb.bin.SiftItem]) -> list["SiftOption"]:
+	def from_sift_items(cls, sift_items:list[avb.bin.SiftItem]) -> list["BinSiftOption"]:
 		return [cls.from_sift_item(s) for s in reversed(sift_items)]
 	
 	@classmethod
-	def from_bin(cls, bin_contents:avb.bin.Bin) -> tuple[bool, list["SiftOption"]]:
+	def from_bin(cls, bin_contents:avb.bin.Bin) -> tuple[bool, list["BinSiftOption"]]:
 		"""Get sift enabled `bool` and list of `BSSiftOption`s from bin contents"""
 
-		return tuple(
+		return (
 			bin_contents.sifted,
 			cls.from_sift_items(bin_contents.sifted_settings)
 		)
