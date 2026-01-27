@@ -1066,8 +1066,8 @@ class BinColumnFieldIDs(enum.Enum):
 	IgnoreAlpha = 151
 	PremultAlpha = 152
 	AlphaChannel = 153
-	AlphaMode = 154
-	AlphaMode = 155
+	AlphaModeA = 154 # NOTE: Were both just "AlphaMode"
+	AlphaModeB = 155 # NOTE: Were both just "AlphaMode"
 	Transcription = 156
 	BinItemIcon = 200
 	Name = 201
