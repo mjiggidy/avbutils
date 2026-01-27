@@ -958,6 +958,7 @@ class BinColumnFieldIDs(enum.Enum):
 	AuxiliaryInk = 37
 	ReelNo = 38
 	Scene = 39
+	User = 40 # NOTE: Added
 	Take = 41
 	Soundroll = 42
 	Camroll = 43
