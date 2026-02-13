@@ -207,7 +207,7 @@ class BinSiftOption:
 		)
 
 	
-class BinColumnFormat(enum.Enum):
+class BinColumnFormat(enum.IntEnum):
 	"""Display format of a bin column"""
 
 	ICON = 0
@@ -917,7 +917,7 @@ BIN_COLUMN_ROLES:dict[int, str] = {
 }
 """Known values from bin view column `type` property"""
 
-class BinColumnFieldIDs(enum.Enum):
+class BinColumnFieldIDs(enum.IntEnum):
 	"""WIP: Known Column Field IDs as enum"""
 
 	Tracks = 1
