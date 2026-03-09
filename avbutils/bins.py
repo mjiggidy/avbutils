@@ -210,38 +210,38 @@ class BinSiftOption:
 class BinColumnFormat(enum.IntEnum):
 	"""Display format of a bin column"""
 
-	ICON = 0
+	Icon = 0
 	"""Graphical icon indicators"""
 
-	PERF = 1
+	Perf = 1
 	# TODO: Unknown, belongs to "Perf" column at least
 
-	USER_TEXT = 2
+	UserText = 2
 	"""User-editable text field"""
 
-	WHATS_THIS = 4
+	MysteryNumber1 = 4
 	"Say what"
 
-	WHAT = 20
+	MysteryNumber2 = 20
 
-	TIMECODE = 100
+	Timecode = 100
 	# TODO: Slip column appears to be integer
 
-	FRAME_COUNT = 101
+	FrameCount = 101
 	# TODO: VFX Column appears to be formatted text
 
-	DATE_TIME = 102
+	DateTime = 102
 
-	FRAME_RATE = 103
+	FrameRate = 103
 	# TODO: Alt: Decimal or fractional?
 
-	STRICT = 105
+	Strict = 105
 	# TODO: Seems to be an option from one of several choices?
 
-	FRAME = 106
+	Frame = 106
 	"""Thumbnail"""
 
-	CODEC_INFO = 109
+	CodecInfo = 109
 	# Perhaps references to other flavors?
 
 	def __str__(self) -> str:
