@@ -1,22 +1,22 @@
 
 """Utilities for working with timelines ("Sequences" in Media Composer parlance)"""
 
-import collections.abc, enum
+import collections.abc, enum, typing
 import avb
 from timecode import Timecode, TimecodeRange
 
 class TrackTypes(enum.Enum):
 	"""Types of tracks supported in a trackgroup"""
 
-	PICTURE  = "picture"
-	SOUND    = "sound"
-	TIMECODE = "timecode"
-	EDGECODE = "edgecode"
-	DATA_ESSENCE = "DataEssenceTrack" # TODO: Investigate
+	PICTURE              = "picture"
+	SOUND                = "sound"
+	TIMECODE             = "timecode"
+	EDGECODE             = "edgecode"
+	DATA_ESSENCE         = "DataEssenceTrack"     # TODO: Investigate
 	DESCRIPTIVE_METADATA = "DescriptiveMetadata"  # TODO: Investigate
 
 	@classmethod
-	def from_track(cls, track:avb.trackgroups.Track) -> "TrackTypes":
+	def from_track(cls, track:avb.trackgroups.Track) -> typing.Self:
 		"""Get the track type for a given Track"""
 
 		return cls(track.media_kind)
@@ -38,6 +38,31 @@ class TrackTypes(enum.Enum):
 		"""Get the prefix for this track type, for use with track labels"""
 
 		return self.prefixes()[self]
+	
+class TimecodeTrackRoles(enum.IntEnum):
+	"""Timecode role for a given timecode track index"""
+	
+	MASTER_TC = 1
+
+	AUX_TC_1  = 3
+	AUX_TC_2  = 4
+	AUX_TC_3  = 5
+	AUX_TC_4  = 6
+	AUX_TC_5  = 7
+
+	TC_24     = 8
+
+	TC_25     = 10
+
+	AUX_TC_24 = 12
+	TC_30NP   = 13
+
+	@classmethod
+	def from_timecode_track(cls, timecode_track:avb.trackgroups.Track) -> typing.Self:
+
+		if not TrackTypes.from_track(timecode_track) == TrackTypes.TIMECODE:
+
+			raise ValueError(f"Track must be a timecode track (got {TrackTypes.from_track(timecode_track)})")
 
 def format_track_label(track:avb.trackgroups.Track) -> str:
 	# TODO: Integrate this into that there `TrackTypes` enum maybe or something?
@@ -117,20 +142,24 @@ def get_tracks_from_composition(composition:avb.trackgroups.Composition, type:Tr
 	"""Filter tracks based on their properties"""
 
 	for track in composition.tracks:
+
 		if type and track.media_kind != type.value:
 			continue
+
 		elif index and track.index != index:
 			continue
+
 		yield track
 
-def get_timecode_range_for_composition(composition:avb.trackgroups.Composition) -> TimecodeRange:
-	"""Get a `TimecodeRange` representing the timecode extents of this composition"""
-
-	# TODO: I'm not yet confident index=1 will always be a Timecode component, or one matching the edit rate
-	# TODO: So... let's see if we run into any problems
+def get_timecode_range_for_composition(
+		composition:avb.trackgroups.Composition,
+		timecode_role:TimecodeTrackRoles=TimecodeTrackRoles.MASTER_TC
+	) -> TimecodeRange:
+	"""Convenience method to get a `TimecodeRange` representing the specified timecode role for this composition"""
 	
 	try:
-		timecode_track = next(get_tracks_from_composition(composition, type=TrackTypes.TIMECODE, index=1))
+		timecode_track = next(get_tracks_from_composition(composition, type=TrackTypes.TIMECODE, index=timecode_role.value))
+
 	except StopIteration:
 		raise ValueError(f"Composition has no timecode tracks")
 	
@@ -138,7 +167,9 @@ def get_timecode_range_for_composition(composition:avb.trackgroups.Composition) 
 
 	# I think maybe SourceMobs store their timecode in a sequence like this?
 	if isinstance(timecode_component, avb.components.Sequence):
-		timecode_component = timecode_component.components[1]
+#("**SEQUENCE COMPONENT")
+		timecode_component, offset = timecode_component.nearest_component_at_time(0)
+#		print(timecode_component)
 
 	if not isinstance(timecode_component, avb.components.Timecode):
 		raise ValueError(f"Timecode track 1 is not a Timecode component: {timecode_component}")
@@ -150,8 +181,6 @@ def get_timecode_range_for_composition(composition:avb.trackgroups.Composition) 
 		start=Timecode(timecode_component.start, rate=round(timecode_component.edit_rate)),
 		duration=timecode_component.length
 	)
-
-	
 
 def get_video_track_from_composition(composition:avb.trackgroups.Composition, media_kind:str="picture", track_index:int=1) -> avb.components.Sequence:
 	"""Get V1 by default"""
