@@ -1,3 +1,7 @@
+"""
+NOTE: See also `sourcerefs` for a non-OO approach
+"""
+
 import enum
 import avb
 from . import compositions, timeline
